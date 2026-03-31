@@ -2,6 +2,8 @@ package com.careflow.service;
 
 import com.careflow.exception.UserNotFoundException;
 import com.careflow.model.User;
+import com.careflow.repository.ActivityRepository;
+import com.careflow.repository.AppointmentRepository;
 import com.careflow.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +13,15 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ActivityRepository activityRepository;
+    private final AppointmentRepository appointmentRepository;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository,
+                       ActivityRepository activityRepository,
+                       AppointmentRepository appointmentRepository) {
         this.userRepository = userRepository;
+        this.activityRepository = activityRepository;
+        this.appointmentRepository = appointmentRepository;
     }
 
     public User saveUser(User user) {
@@ -52,6 +60,15 @@ public class UserService {
 
     public void deleteUserById(Long id) {
         User existingUser = findUserByIdOrThrow(id);
+
+        if (activityRepository.existsByProviderId(id)) {
+            throw new IllegalStateException("User cannot be deleted because he owns activities");
+        }
+
+        if (appointmentRepository.existsByClientId(id)) {
+            throw new IllegalStateException("User cannot be deleted because he has appointments as client");
+        }
+
         userRepository.delete(existingUser);
     }
 

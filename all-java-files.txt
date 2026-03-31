@@ -1,0 +1,1076 @@
+package com.careflow.repository;
+
+import com.careflow.model.Appointment;
+import com.careflow.model.AppointmentStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
+    List<Appointment> findByActivityProviderId(Long providerId);
+
+    List<Appointment> findByClientId(Long clientId);
+
+    List<Appointment> findByActivityIdAndStatus(Long activityId, AppointmentStatus status);
+
+    boolean existsByActivityId(Long activityId);
+
+    boolean existsByClientId(Long clientId);
+
+    boolean existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long activityId,
+            LocalDateTime endTime,
+            LocalDateTime startTime
+    );
+
+    boolean existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long activityId,
+            Long id,
+            LocalDateTime endTime,
+            LocalDateTime startTime
+    );
+}package com.careflow.repository;
+
+import com.careflow.model.Activity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ActivityRepository extends JpaRepository<Activity, Long> {
+
+    boolean existsByProviderId(Long providerId);
+}package com.careflow.repository;
+
+import com.careflow.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+}package com.careflow.controller;
+
+import com.careflow.model.Appointment;
+import com.careflow.service.AppointmentService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/appointments")
+public class AppointmentController {
+
+    private final AppointmentService appointmentService;
+
+    public AppointmentController(AppointmentService appointmentService) {
+        this.appointmentService = appointmentService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Appointment> saveAppointment(@Valid @RequestBody Appointment appointment) {
+        Appointment savedAppointment = appointmentService.saveAppointment(appointment);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedAppointment);
+    }
+
+    @GetMapping
+    public List<Appointment> findAllAppointments() {
+        return appointmentService.findAllAppointments();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Appointment> findAppointmentById(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.findAppointmentById(id));
+    }
+
+    @GetMapping("/provider/{providerId}")
+    public List<Appointment> findAppointmentsByProviderId(@PathVariable Long providerId) {
+        return appointmentService.findAppointmentsByProviderId(providerId);
+    }
+
+    @GetMapping("/client/{clientId}")
+    public List<Appointment> findAppointmentsByClientId(@PathVariable Long clientId) {
+        return appointmentService.findAppointmentsByClientId(clientId);
+    }
+
+    @GetMapping("/activity/{activityId}/available")
+    public List<Appointment> findAvailableAppointmentsByActivityId(@PathVariable Long activityId) {
+        return appointmentService.findAvailableAppointmentsByActivityId(activityId);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id,
+                                                         @Valid @RequestBody Appointment appointment) {
+        return ResponseEntity.ok(appointmentService.updateAppointment(id, appointment));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAppointmentById(@PathVariable Long id) {
+        appointmentService.deleteAppointmentById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{appointmentId}/reserve")
+    public ResponseEntity<Appointment> reserveAppointment(@PathVariable Long appointmentId,
+                                                          @RequestParam Long clientId) {
+        return ResponseEntity.ok(appointmentService.reserveAppointment(appointmentId, clientId));
+    }
+
+    @PatchMapping("/{appointmentId}/confirm")
+    public ResponseEntity<Appointment> confirmAppointment(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(appointmentService.confirmAppointment(appointmentId));
+    }
+
+    @PatchMapping("/{appointmentId}/reject")
+    public ResponseEntity<Appointment> rejectAppointment(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(appointmentService.rejectAppointment(appointmentId));
+    }
+
+    @PatchMapping("/{appointmentId}/pay")
+    public ResponseEntity<Appointment> markAppointmentAsPaid(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(appointmentService.markAppointmentAsPaid(appointmentId));
+    }
+
+    @PatchMapping("/{appointmentId}/complete")
+    public ResponseEntity<Appointment> completeAppointment(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(appointmentService.completeAppointment(appointmentId));
+    }
+}package com.careflow.controller;
+
+import com.careflow.model.Activity;
+import com.careflow.service.ActivityService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/activities")
+public class ActivityController {
+
+    private final ActivityService activityService;
+
+    public ActivityController(ActivityService activityService) {
+        this.activityService = activityService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Activity> saveActivity(@Valid @RequestBody Activity activity) {
+        Activity savedActivity = activityService.saveActivity(activity);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedActivity);
+    }
+
+    @GetMapping
+    public List<Activity> findAllActivities() {
+        return activityService.findAllActivities();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Activity> findActivityById(@PathVariable Long id) {
+        return ResponseEntity.ok(activityService.findActivityById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Activity> updateActivity(@PathVariable Long id,
+                                                   @Valid @RequestBody Activity activity) {
+        return ResponseEntity.ok(activityService.updateActivity(id, activity));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteActivityById(@PathVariable Long id) {
+        activityService.deleteActivityById(id);
+        return ResponseEntity.noContent().build();
+    }
+}package com.careflow.controller;
+
+import com.careflow.model.User;
+import com.careflow.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping
+    public ResponseEntity<User> saveUser(@Valid @RequestBody User user) {
+        User savedUser = userService.saveUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+    }
+
+    @GetMapping
+    public List<User> findAllUsers() {
+        return userService.findAllUsers();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> findUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findUserById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
+        return ResponseEntity.ok(userService.updateUser(id, user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
+        userService.deleteUserById(id);
+        return ResponseEntity.noContent().build();
+    }
+}package com.careflow;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class CareflowApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(CareflowApplication.class, args);
+	}
+}
+package com.careflow.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table(name = "activities")
+public class Activity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Provider must not be null")
+    @ManyToOne
+    @JoinColumn(name = "provider_id", nullable = false)
+    private User provider;
+
+    @NotBlank(message = "Title must not be blank")
+    @Size(min = 3, max = 100, message = "Title must be between 3 and 100 characters")
+    @Column(nullable = false, length = 100)
+    private String title;
+
+    @NotBlank(message = "Description must not be blank")
+    @Size(max = 1000, message = "Description must not exceed 1000 characters")
+    @Column(nullable = false, length = 1000)
+    private String description;
+
+    @NotNull(message = "Price must not be null")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
+    @NotNull(message = "Duration must not be null")
+    @Positive(message = "Duration must be greater than 0")
+    @Column(nullable = false)
+    private Integer durationMinutes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ActivityStatus status;
+
+    public Activity() {
+    }
+
+    public Activity(User provider,
+                    String title,
+                    String description,
+                    BigDecimal price,
+                    Integer durationMinutes,
+                    ActivityStatus status) {
+        this.provider = provider;
+        this.title = title;
+        this.description = description;
+        this.price = price;
+        this.durationMinutes = durationMinutes;
+        this.status = status;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public User getProvider() {
+        return provider;
+    }
+
+    public void setProvider(User provider) {
+        this.provider = provider;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public ActivityStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ActivityStatus status) {
+        this.status = status;
+    }
+}package com.careflow.model;
+
+public enum UserRole {
+    CLIENT,
+    PROVIDER,
+    ADMIN
+}
+package com.careflow.model;
+
+public enum AppointmentStatus {
+    AVAILABLE,
+    PENDING,
+    REJECTED,
+    AWAITING_PAYMENT,
+    CONFIRMED,
+    COMPLETED
+}package com.careflow.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "appointments")
+public class Appointment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Activity must not be null")
+    @ManyToOne
+    @JoinColumn(name = "activity_id", nullable = false)
+    private Activity activity;
+
+    @ManyToOne
+    @JoinColumn(name = "client_id")
+    private User client;
+
+    @NotNull(message = "Start time must not be null")
+    @Column(nullable = false)
+    private LocalDateTime startTime;
+
+    @NotNull(message = "End time must not be null")
+    @Column(nullable = false)
+    private LocalDateTime endTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private AppointmentStatus status;
+
+    public Appointment() {
+    }
+
+    public Appointment(Activity activity,
+                       User client,
+                       LocalDateTime startTime,
+                       LocalDateTime endTime,
+                       AppointmentStatus status) {
+        this.activity = activity;
+        this.client = client;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.status = status;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Activity getActivity() {
+        return activity;
+    }
+
+    public void setActivity(Activity activity) {
+        this.activity = activity;
+    }
+
+    public User getClient() {
+        return client;
+    }
+
+    public void setClient(User client) {
+        this.client = client;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public AppointmentStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(AppointmentStatus status) {
+        this.status = status;
+    }
+}package com.careflow.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Username must not be blank")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @NotBlank(message = "Password must not be blank")
+    @Size(min = 6, max = 255, message = "Password must be between 6 and 255 characters")
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @NotBlank(message = "Email must not be blank")
+    @Email(message = "Email must be valid")
+    @Size(max = 100, message = "Email must not exceed 100 characters")
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role;
+
+    public User() {
+    }
+
+    public User(String username, String password, String email, UserRole role) {
+        this.username = username;
+        this.password = password;
+        this.email = email;
+        this.role = role;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+}package com.careflow.model;
+
+public enum ActivityStatus {
+    ACTIVE,
+    INACTIVE
+}package com.careflow.service;
+
+import com.careflow.exception.UserNotFoundException;
+import com.careflow.model.User;
+import com.careflow.repository.ActivityRepository;
+import com.careflow.repository.AppointmentRepository;
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final ActivityRepository activityRepository;
+    private final AppointmentRepository appointmentRepository;
+
+    public UserService(UserRepository userRepository,
+                       ActivityRepository activityRepository,
+                       AppointmentRepository appointmentRepository) {
+        this.userRepository = userRepository;
+        this.activityRepository = activityRepository;
+        this.appointmentRepository = appointmentRepository;
+    }
+
+    public User saveUser(User user) {
+        validateUsernameUniqueness(user.getUsername());
+        validateEmailUniqueness(user.getEmail());
+
+        return userRepository.save(user);
+    }
+
+    public List<User> findAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public User findUserById(Long id) {
+        return findUserByIdOrThrow(id);
+    }
+
+    public User updateUser(Long id, User updatedUser) {
+        User existingUser = findUserByIdOrThrow(id);
+
+        if (!existingUser.getUsername().equals(updatedUser.getUsername())) {
+            validateUsernameUniqueness(updatedUser.getUsername());
+        }
+
+        if (!existingUser.getEmail().equals(updatedUser.getEmail())) {
+            validateEmailUniqueness(updatedUser.getEmail());
+        }
+
+        existingUser.setUsername(updatedUser.getUsername());
+        existingUser.setPassword(updatedUser.getPassword());
+        existingUser.setEmail(updatedUser.getEmail());
+        existingUser.setRole(updatedUser.getRole());
+
+        return userRepository.save(existingUser);
+    }
+
+    public void deleteUserById(Long id) {
+        User existingUser = findUserByIdOrThrow(id);
+
+        if (activityRepository.existsByProviderId(id)) {
+            throw new IllegalStateException("User cannot be deleted because he owns activities");
+        }
+
+        if (appointmentRepository.existsByClientId(id)) {
+            throw new IllegalStateException("User cannot be deleted because he has appointments as client");
+        }
+
+        userRepository.delete(existingUser);
+    }
+
+    private User findUserByIdOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    private void validateUsernameUniqueness(String username) {
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username already exists: " + username);
+        }
+    }
+
+    private void validateEmailUniqueness(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already exists: " + email);
+        }
+    }
+}package com.careflow.service;
+
+import com.careflow.exception.AppointmentNotFoundException;
+import com.careflow.exception.UserNotFoundException;
+import com.careflow.model.Activity;
+import com.careflow.model.ActivityStatus;
+import com.careflow.model.Appointment;
+import com.careflow.model.AppointmentStatus;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.repository.ActivityRepository;
+import com.careflow.repository.AppointmentRepository;
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+public class AppointmentService {
+
+    private final AppointmentRepository appointmentRepository;
+    private final ActivityRepository activityRepository;
+    private final UserRepository userRepository;
+
+    public AppointmentService(AppointmentRepository appointmentRepository,
+                              ActivityRepository activityRepository,
+                              UserRepository userRepository) {
+        this.appointmentRepository = appointmentRepository;
+        this.activityRepository = activityRepository;
+        this.userRepository = userRepository;
+    }
+
+    public Appointment saveAppointment(Appointment appointment) {
+        validateAppointmentTime(appointment.getStartTime(), appointment.getEndTime());
+
+        Activity activity = resolveActivity(appointment);
+        validateActivityIsActive(activity);
+        validateProviderRole(activity.getProvider());
+        validateNoTimeOverlapForCreate(activity.getId(), appointment.getStartTime(), appointment.getEndTime());
+
+        appointment.setActivity(activity);
+        appointment.setClient(null);
+        appointment.setStatus(AppointmentStatus.AVAILABLE);
+
+        return appointmentRepository.save(appointment);
+    }
+
+    public List<Appointment> findAllAppointments() {
+        return appointmentRepository.findAll();
+    }
+
+    public Appointment findAppointmentById(Long id) {
+        return findAppointmentByIdOrThrow(id);
+    }
+
+    public List<Appointment> findAppointmentsByProviderId(Long providerId) {
+        return appointmentRepository.findByActivityProviderId(providerId);
+    }
+
+    public List<Appointment> findAppointmentsByClientId(Long clientId) {
+        return appointmentRepository.findByClientId(clientId);
+    }
+
+    public List<Appointment> findAvailableAppointmentsByActivityId(Long activityId) {
+        return appointmentRepository.findByActivityIdAndStatus(activityId, AppointmentStatus.AVAILABLE);
+    }
+
+    public Appointment updateAppointment(Long id, Appointment updatedAppointment) {
+        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+
+        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+            throw new IllegalStateException("Only AVAILABLE appointment can be edited");
+        }
+
+        validateAppointmentTime(updatedAppointment.getStartTime(), updatedAppointment.getEndTime());
+
+        Activity activity = resolveActivity(updatedAppointment);
+        validateActivityIsActive(activity);
+        validateProviderRole(activity.getProvider());
+        validateNoTimeOverlapForUpdate(
+                activity.getId(),
+                existingAppointment.getId(),
+                updatedAppointment.getStartTime(),
+                updatedAppointment.getEndTime()
+        );
+
+        existingAppointment.setActivity(activity);
+        existingAppointment.setStartTime(updatedAppointment.getStartTime());
+        existingAppointment.setEndTime(updatedAppointment.getEndTime());
+
+        return appointmentRepository.save(existingAppointment);
+    }
+
+    public void deleteAppointmentById(Long id) {
+        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+
+        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+            throw new IllegalStateException("Only AVAILABLE appointment can be deleted");
+        }
+
+        appointmentRepository.delete(existingAppointment);
+    }
+
+    public Appointment reserveAppointment(Long appointmentId, Long clientId) {
+        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+
+        if (appointment.getStatus() != AppointmentStatus.AVAILABLE) {
+            throw new IllegalStateException("Only AVAILABLE appointment can be reserved");
+        }
+
+        User client = findUserByIdOrThrow(clientId);
+        validateClientRole(client);
+        validateClientIsNotProvider(client, appointment.getActivity().getProvider());
+
+        appointment.setClient(client);
+        appointment.setStatus(AppointmentStatus.PENDING);
+
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment confirmAppointment(Long appointmentId) {
+        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+
+        if (appointment.getStatus() != AppointmentStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING appointment can be confirmed");
+        }
+
+        appointment.setStatus(AppointmentStatus.AWAITING_PAYMENT);
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment rejectAppointment(Long appointmentId) {
+        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+
+        if (appointment.getStatus() != AppointmentStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING appointment can be rejected");
+        }
+
+        appointment.setStatus(AppointmentStatus.REJECTED);
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment markAppointmentAsPaid(Long appointmentId) {
+        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+
+        if (appointment.getStatus() != AppointmentStatus.AWAITING_PAYMENT) {
+            throw new IllegalStateException("Only AWAITING_PAYMENT appointment can be marked as paid");
+        }
+
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        return appointmentRepository.save(appointment);
+    }
+
+    public Appointment completeAppointment(Long appointmentId) {
+        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+
+        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new IllegalStateException("Only CONFIRMED appointment can be completed");
+        }
+
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        return appointmentRepository.save(appointment);
+    }
+
+    private Appointment findAppointmentByIdOrThrow(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new AppointmentNotFoundException(id));
+    }
+
+    private Activity resolveActivity(Appointment appointment) {
+        if (appointment.getActivity() == null || appointment.getActivity().getId() == null) {
+            throw new IllegalArgumentException("Activity id must not be null");
+        }
+
+        return activityRepository.findById(appointment.getActivity().getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Activity with id " + appointment.getActivity().getId() + " not found"
+                ));
+    }
+
+    private User findUserByIdOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    private void validateAppointmentTime(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Start time and end time must not be null");
+        }
+
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
+    }
+
+    private void validateProviderRole(User provider) {
+        if (provider.getRole() != UserRole.PROVIDER) {
+            throw new IllegalArgumentException("Activity owner must have PROVIDER role");
+        }
+    }
+
+    private void validateClientRole(User client) {
+        if (client.getRole() != UserRole.CLIENT) {
+            throw new IllegalArgumentException("Only CLIENT can reserve appointment");
+        }
+    }
+
+    private void validateClientIsNotProvider(User client, User provider) {
+        if (client.getId().equals(provider.getId())) {
+            throw new IllegalArgumentException("Provider cannot reserve own appointment");
+        }
+    }
+
+    private void validateActivityIsActive(Activity activity) {
+        if (activity.getStatus() != ActivityStatus.ACTIVE) {
+            throw new IllegalStateException("Appointments can be created only for ACTIVE activities");
+        }
+    }
+
+    private void validateNoTimeOverlapForCreate(Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
+        if (appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                activityId, endTime, startTime)) {
+            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+        }
+    }
+
+    private void validateNoTimeOverlapForUpdate(Long activityId,
+                                                Long appointmentId,
+                                                LocalDateTime startTime,
+                                                LocalDateTime endTime) {
+        if (appointmentRepository.existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+                activityId, appointmentId, endTime, startTime)) {
+            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+        }
+    }
+}package com.careflow.service;
+
+import com.careflow.exception.ActivityNotFoundException;
+import com.careflow.exception.UserNotFoundException;
+import com.careflow.model.Activity;
+import com.careflow.model.ActivityStatus;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.repository.ActivityRepository;
+import com.careflow.repository.AppointmentRepository;
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ActivityService {
+
+    private final ActivityRepository activityRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final UserRepository userRepository;
+
+    public ActivityService(ActivityRepository activityRepository,
+                           AppointmentRepository appointmentRepository,
+                           UserRepository userRepository) {
+        this.activityRepository = activityRepository;
+        this.appointmentRepository = appointmentRepository;
+        this.userRepository = userRepository;
+    }
+
+    public Activity saveActivity(Activity activity) {
+        User provider = resolveProvider(activity);
+        validateProviderRole(provider);
+
+        activity.setProvider(provider);
+
+        if (activity.getStatus() == null) {
+            activity.setStatus(ActivityStatus.ACTIVE);
+        }
+
+        return activityRepository.save(activity);
+    }
+
+    public List<Activity> findAllActivities() {
+        return activityRepository.findAll();
+    }
+
+    public Activity findActivityById(Long id) {
+        return findActivityByIdOrThrow(id);
+    }
+
+    public Activity updateActivity(Long id, Activity updatedActivity) {
+        Activity existingActivity = findActivityByIdOrThrow(id);
+
+        existingActivity.setTitle(updatedActivity.getTitle());
+        existingActivity.setDescription(updatedActivity.getDescription());
+        existingActivity.setPrice(updatedActivity.getPrice());
+        existingActivity.setDurationMinutes(updatedActivity.getDurationMinutes());
+
+        if (updatedActivity.getStatus() != null) {
+            existingActivity.setStatus(updatedActivity.getStatus());
+        }
+
+        return activityRepository.save(existingActivity);
+    }
+
+    public void deleteActivityById(Long id) {
+        Activity existingActivity = findActivityByIdOrThrow(id);
+
+        if (appointmentRepository.existsByActivityId(id)) {
+            throw new IllegalStateException("Activity cannot be deleted because it has appointments");
+        }
+
+        activityRepository.delete(existingActivity);
+    }
+
+    private Activity findActivityByIdOrThrow(Long id) {
+        return activityRepository.findById(id)
+                .orElseThrow(() -> new ActivityNotFoundException(id));
+    }
+
+    private User resolveProvider(Activity activity) {
+        if (activity.getProvider() == null || activity.getProvider().getId() == null) {
+            throw new IllegalArgumentException("Provider id must not be null");
+        }
+
+        return userRepository.findById(activity.getProvider().getId())
+                .orElseThrow(() -> new UserNotFoundException(activity.getProvider().getId()));
+    }
+
+    private void validateProviderRole(User provider) {
+        if (provider.getRole() != UserRole.PROVIDER) {
+            throw new IllegalArgumentException("Only PROVIDER can own activity");
+        }
+    }
+}package com.careflow.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class UserNotFoundException extends RuntimeException {
+
+    public UserNotFoundException(Long id) {
+        super("User with id " + id + " not found");
+    }
+}package com.careflow.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationException(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    private Map<String, String> createErrorBody(String message) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", message);
+        return body;
+    }
+}package com.careflow.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class ActivityNotFoundException extends RuntimeException {
+
+    public ActivityNotFoundException(Long id) {
+        super("Activity with id " + id + " not found");
+    }
+}package com.careflow.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class AppointmentNotFoundException extends RuntimeException {
+
+    public AppointmentNotFoundException(Long id) {
+        super("Appointment with id " + id + " not found");
+    }
+}
