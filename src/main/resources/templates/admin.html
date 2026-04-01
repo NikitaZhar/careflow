@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Admin Page</title>
+</head>
+<body>
+
+	<h2 id="pageTitle">Список провайдеров</h2>
+
+	<button id="addButton" type="button" onclick="showInviteForm()">
+		Добавить провайдера
+	</button>
+
+	<div id="inviteForm" style="display: none; margin-top: 15px;">
+		<form th:action="@{/admin/providers/invite}" method="post">
+			<div>
+				<label for="email">Введите email провайдера:</label>
+				<input id="email" type="email" name="email" required>
+			</div>
+			<div style="margin-top: 10px;">
+				<button type="submit">Отправить приглашение</button>
+			</div>
+		</form>
+	</div>
+
+	<div id="messageBlock" th:if="${message}">
+		<p th:text="${message}" style="color: green;"></p>
+	</div>
+
+	<div id="errorBlock" th:if="${error}">
+		<p th:text="${error}" style="color: red;"></p>
+	</div>
+
+	<div th:if="${#lists.isEmpty(providers)}">
+		<p>Список провайдеров пустой</p>
+	</div>
+
+	<table th:if="${not #lists.isEmpty(providers)}">
+		<thead>
+			<tr>
+				<th>№</th>
+				<th>Username</th>
+				<th>Email</th>
+				<th>Role</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr th:each="provider, stat : ${providers}">
+				<td th:text="${stat.index + 1}"></td>
+				<td th:text="${provider.username}"></td>
+				<td th:text="${provider.email}"></td>
+				<td th:text="${provider.role}"></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<script>
+	function showInviteForm() {
+	    document.getElementById('inviteForm').style.display = 'block';
+	    document.getElementById('pageTitle').textContent = 'Добавить провайдера';
+	    document.getElementById('addButton').style.display = 'none';
+
+	    const message = document.getElementById('messageBlock');
+	    const error = document.getElementById('errorBlock');
+
+	    if (message) message.style.display = 'none';
+	    if (error) error.style.display = 'none';
+	}
+	</script>
+
+</body>
+</html>

@@ -1,3 +1,425 @@
+
+===== ./target/classes/data.sql =====
+INSERT INTO users (username, email, password, role)
+SELECT 'admin', 'nikita.zharinov@gmail.com', '123', 'ADMIN'
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE username = 'admin'
+);
+===== ./target/classes/templates/admin.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Admin Page</title>
+</head>
+<body>
+
+	<h2 id="pageTitle">Список провайдеров</h2>
+
+	<button id="addButton" type="button" onclick="showInviteForm()">
+		Добавить провайдера
+	</button>
+
+	<div id="inviteForm" style="display: none; margin-top: 15px;">
+		<form th:action="@{/admin/providers/invite}" method="post">
+			<div>
+				<label for="email">Введите email провайдера:</label>
+				<input id="email" type="email" name="email" required>
+			</div>
+			<div style="margin-top: 10px;">
+				<button type="submit">Отправить приглашение</button>
+			</div>
+		</form>
+	</div>
+
+	<div id="messageBlock" th:if="${message}">
+		<p th:text="${message}" style="color: green;"></p>
+	</div>
+
+	<div id="errorBlock" th:if="${error}">
+		<p th:text="${error}" style="color: red;"></p>
+	</div>
+
+	<div th:if="${#lists.isEmpty(providers)}">
+		<p>Список провайдеров пустой</p>
+	</div>
+
+	<table th:if="${not #lists.isEmpty(providers)}">
+		<thead>
+			<tr>
+				<th>№</th>
+				<th>Username</th>
+				<th>Email</th>
+				<th>Role</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr th:each="provider, stat : ${providers}">
+				<td th:text="${stat.index + 1}"></td>
+				<td th:text="${provider.username}"></td>
+				<td th:text="${provider.email}"></td>
+				<td th:text="${provider.role}"></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<script>
+	function showInviteForm() {
+	    document.getElementById('inviteForm').style.display = 'block';
+	    document.getElementById('pageTitle').textContent = 'Добавить провайдера';
+	    document.getElementById('addButton').style.display = 'none';
+
+	    const message = document.getElementById('messageBlock');
+	    const error = document.getElementById('errorBlock');
+
+	    if (message) message.style.display = 'none';
+	    if (error) error.style.display = 'none';
+	}
+	</script>
+
+</body>
+</html>
+===== ./target/classes/templates/login.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login</title>
+</head>
+<body>
+
+<h2>Admin Login</h2>
+
+<form th:action="@{/auth/login}" method="post">
+    <div>
+        <label for="username">Username:</label>
+        <input id="username" type="text" name="username">
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <input id="password" type="password" name="password">
+    </div>
+
+    <div>
+        <button type="submit">Login</button>
+    </div>
+</form>
+
+<div th:if="${error}">
+    <p th:text="${error}"></p>
+</div>
+
+</body>
+</html>
+===== ./target/classes/templates/provider-register-success.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация завершена</title>
+</head>
+<body>
+
+<h2>Регистрация завершена</h2>
+<p th:text="${message}"></p>
+
+</body>
+</html>
+===== ./target/classes/templates/provider-register.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация провайдера</title>
+</head>
+<body>
+
+<h2>Регистрация провайдера</h2>
+
+<div th:if="${error}">
+    <p th:text="${error}" style="color:red;"></p>
+</div>
+
+<form th:action="@{/provider/register}" method="post">
+    <input type="hidden" name="token" th:value="${token}">
+
+    <div>
+        <label>Email:</label>
+        <input type="text" th:value="${email}" readonly>
+    </div>
+
+    <div>
+        <label for="username">Username:</label>
+        <input id="username" type="text" name="username" required>
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <input id="password" type="password" name="password" required>
+    </div>
+
+    <div>
+        <button type="submit">Зарегистрироваться</button>
+    </div>
+</form>
+
+</body>
+</html>
+===== ./target/classes/templates/provider-register-error.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ошибка приглашения</title>
+</head>
+<body>
+
+<h2>Ошибка</h2>
+<p th:text="${error}"></p>
+
+</body>
+</html>
+===== ./src/test/java/com/careflow/CareflowApplicationTests.java =====
+package com.careflow;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class CareflowApplicationTests {
+
+    @Test
+    void contextLoads() {
+    }
+}
+===== ./src/test/java/com/careflow/UserControllerTest.java =====
+package com.careflow;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void createUser_success() throws Exception {
+
+        String json = """
+                {
+                  "username": "test_user",
+                  "password": "password123",
+                  "email": "test@example.com",
+                  "role": "CLIENT"
+                }
+                """;
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("test_user"))
+                .andExpect(jsonPath("$.email").value("test@example.com"))
+                .andExpect(jsonPath("$.role").value("CLIENT"));
+    }
+}
+===== ./src/main/resources/data.sql =====
+INSERT INTO users (username, email, password, role)
+SELECT 'admin', 'nikita.zharinov@gmail.com', '123', 'ADMIN'
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE username = 'admin'
+);
+===== ./src/main/resources/templates/admin.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Admin Page</title>
+</head>
+<body>
+
+	<h2 id="pageTitle">Список провайдеров</h2>
+
+	<button id="addButton" type="button" onclick="showInviteForm()">
+		Добавить провайдера
+	</button>
+
+	<div id="inviteForm" style="display: none; margin-top: 15px;">
+		<form th:action="@{/admin/providers/invite}" method="post">
+			<div>
+				<label for="email">Введите email провайдера:</label>
+				<input id="email" type="email" name="email" required>
+			</div>
+			<div style="margin-top: 10px;">
+				<button type="submit">Отправить приглашение</button>
+			</div>
+		</form>
+	</div>
+
+	<div id="messageBlock" th:if="${message}">
+		<p th:text="${message}" style="color: green;"></p>
+	</div>
+
+	<div id="errorBlock" th:if="${error}">
+		<p th:text="${error}" style="color: red;"></p>
+	</div>
+
+	<div th:if="${#lists.isEmpty(providers)}">
+		<p>Список провайдеров пустой</p>
+	</div>
+
+	<table th:if="${not #lists.isEmpty(providers)}">
+		<thead>
+			<tr>
+				<th>№</th>
+				<th>Username</th>
+				<th>Email</th>
+				<th>Role</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr th:each="provider, stat : ${providers}">
+				<td th:text="${stat.index + 1}"></td>
+				<td th:text="${provider.username}"></td>
+				<td th:text="${provider.email}"></td>
+				<td th:text="${provider.role}"></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<script>
+	function showInviteForm() {
+	    document.getElementById('inviteForm').style.display = 'block';
+	    document.getElementById('pageTitle').textContent = 'Добавить провайдера';
+	    document.getElementById('addButton').style.display = 'none';
+
+	    const message = document.getElementById('messageBlock');
+	    const error = document.getElementById('errorBlock');
+
+	    if (message) message.style.display = 'none';
+	    if (error) error.style.display = 'none';
+	}
+	</script>
+
+</body>
+</html>
+===== ./src/main/resources/templates/login.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login</title>
+</head>
+<body>
+
+<h2>Admin Login</h2>
+
+<form th:action="@{/auth/login}" method="post">
+    <div>
+        <label for="username">Username:</label>
+        <input id="username" type="text" name="username">
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <input id="password" type="password" name="password">
+    </div>
+
+    <div>
+        <button type="submit">Login</button>
+    </div>
+</form>
+
+<div th:if="${error}">
+    <p th:text="${error}"></p>
+</div>
+
+</body>
+</html>
+===== ./src/main/resources/templates/provider-register-success.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация завершена</title>
+</head>
+<body>
+
+<h2>Регистрация завершена</h2>
+<p th:text="${message}"></p>
+
+</body>
+</html>
+===== ./src/main/resources/templates/provider-register.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация провайдера</title>
+</head>
+<body>
+
+<h2>Регистрация провайдера</h2>
+
+<div th:if="${error}">
+    <p th:text="${error}" style="color:red;"></p>
+</div>
+
+<form th:action="@{/provider/register}" method="post">
+    <input type="hidden" name="token" th:value="${token}">
+
+    <div>
+        <label>Email:</label>
+        <input type="text" th:value="${email}" readonly>
+    </div>
+
+    <div>
+        <label for="username">Username:</label>
+        <input id="username" type="text" name="username" required>
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <input id="password" type="password" name="password" required>
+    </div>
+
+    <div>
+        <button type="submit">Зарегистрироваться</button>
+    </div>
+</form>
+
+</body>
+</html>
+===== ./src/main/resources/templates/provider-register-error.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ошибка приглашения</title>
+</head>
+<body>
+
+<h2>Ошибка</h2>
+<p th:text="${error}"></p>
+
+</body>
+</html>
+===== ./src/main/java/com/careflow/repository/AppointmentRepository.java =====
 package com.careflow.repository;
 
 import com.careflow.model.Appointment;
@@ -31,7 +453,20 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             LocalDateTime endTime,
             LocalDateTime startTime
     );
-}package com.careflow.repository;
+}
+===== ./src/main/java/com/careflow/repository/ProviderInvitationRepository.java =====
+package com.careflow.repository;
+
+import com.careflow.model.ProviderInvitation;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ProviderInvitationRepository extends JpaRepository<ProviderInvitation, Long> {
+	boolean existsByEmailAndUsedFalse(String email);
+	Optional<ProviderInvitation> findByToken(String token);
+}
+===== ./src/main/java/com/careflow/repository/ActivityRepository.java =====
+package com.careflow.repository;
 
 import com.careflow.model.Activity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,16 +474,72 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
     boolean existsByProviderId(Long providerId);
-}package com.careflow.repository;
+}
+===== ./src/main/java/com/careflow/repository/UserRepository.java =====
+package com.careflow.repository;
 
 import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    boolean existsByUsername(String username);
+	Optional<User> findByUsername(String username);
+	
+	boolean existsByUsername(String username);
     boolean existsByEmail(String email);
-}package com.careflow.controller;
+    
+    List<User> findByRole(UserRole role);
+}
+===== ./src/main/java/com/careflow/controller/AdminController.java =====
+package com.careflow.controller;
+
+import com.careflow.service.AdminService;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Controller
+public class AdminController {
+
+    private final AdminService adminService;
+
+    public AdminController(AdminService adminService) {
+        this.adminService = adminService;
+    }
+
+    @GetMapping("/admin")
+    public String showAdminPage(Model model) {
+        loadProviders(model);
+        return "admin";
+    }
+
+    @PostMapping("/admin/providers/invite")
+    public String inviteProvider(@RequestParam String email, Model model) {
+        boolean created = adminService.createProviderInvitation(email);
+
+        loadProviders(model);
+
+        if (!created) {
+            model.addAttribute("error", "Приглашение уже существует или пользователь с таким email уже зарегистрирован");
+            return "admin";
+        }
+
+        model.addAttribute("message", "Приглашение создано");
+        return "admin";
+    }
+
+    private void loadProviders(Model model) {
+        model.addAttribute("providers", adminService.getProviders());
+    }
+}
+===== ./src/main/java/com/careflow/controller/AppointmentController.java =====
+package com.careflow.controller;
 
 import com.careflow.model.Appointment;
 import com.careflow.service.AppointmentService;
@@ -137,7 +628,50 @@ public class AppointmentController {
     public ResponseEntity<Appointment> completeAppointment(@PathVariable Long appointmentId) {
         return ResponseEntity.ok(appointmentService.completeAppointment(appointmentId));
     }
-}package com.careflow.controller;
+}
+===== ./src/main/java/com/careflow/controller/AuthController.java =====
+package com.careflow.controller;
+
+import com.careflow.service.AuthService;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @GetMapping("/login")
+    public String showLoginPage() {
+        return "login";
+    }
+
+    @PostMapping("/login")
+    public String login(@RequestParam String username,
+                        @RequestParam String password,
+                        Model model) {
+
+        boolean authenticated = authService.authenticate(username, password);
+
+        if (!authenticated) {
+            model.addAttribute("error", "Invalid username or password");
+            return "login";
+        }
+
+        return "redirect:/admin";
+    }
+}
+===== ./src/main/java/com/careflow/controller/ActivityController.java =====
+package com.careflow.controller;
 
 import com.careflow.model.Activity;
 import com.careflow.service.ActivityService;
@@ -185,7 +719,116 @@ public class ActivityController {
         activityService.deleteActivityById(id);
         return ResponseEntity.noContent().build();
     }
-}package com.careflow.controller;
+}
+===== ./src/main/java/com/careflow/controller/ProviderRegistrationController.java =====
+package com.careflow.controller;
+
+import com.careflow.model.ProviderInvitation;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.repository.ProviderInvitationRepository;
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Controller
+public class ProviderRegistrationController {
+
+    private final ProviderInvitationRepository providerInvitationRepository;
+    private final UserRepository userRepository;
+
+    public ProviderRegistrationController(ProviderInvitationRepository providerInvitationRepository,
+                                          UserRepository userRepository) {
+        this.providerInvitationRepository = providerInvitationRepository;
+        this.userRepository = userRepository;
+    }
+
+    @GetMapping("/provider/register")
+    public String showRegistrationPage(@RequestParam String token, Model model) {
+        ProviderInvitation invitation = findValidInvitation(token, model);
+
+        if (invitation == null) {
+            return "provider-register-error";
+        }
+
+        model.addAttribute("token", token);
+        model.addAttribute("email", invitation.getEmail());
+
+        return "provider-register";
+    }
+
+    @PostMapping("/provider/register")
+    public String registerProvider(@RequestParam String token,
+                                   @RequestParam String username,
+                                   @RequestParam String password,
+                                   Model model) {
+        ProviderInvitation invitation = findValidInvitation(token, model);
+
+        if (invitation == null) {
+            return "provider-register-error";
+        }
+
+        String normalizedUsername = username.trim();
+        String normalizedPassword = password.trim();
+        String invitationEmail = invitation.getEmail().trim().toLowerCase();
+
+        if (normalizedUsername.isEmpty() || normalizedPassword.isEmpty()) {
+            model.addAttribute("token", token);
+            model.addAttribute("email", invitation.getEmail());
+            model.addAttribute("error", "Username и password обязательны");
+            return "provider-register";
+        }
+
+        if (userRepository.existsByUsername(normalizedUsername)) {
+            model.addAttribute("token", token);
+            model.addAttribute("email", invitation.getEmail());
+            model.addAttribute("error", "Пользователь с таким username уже существует");
+            return "provider-register";
+        }
+
+        if (userRepository.existsByEmail(invitationEmail)) {
+            model.addAttribute("token", token);
+            model.addAttribute("email", invitation.getEmail());
+            model.addAttribute("error", "Пользователь с таким email уже существует");
+            return "provider-register";
+        }
+
+        User user = new User();
+        user.setUsername(normalizedUsername);
+        user.setEmail(invitationEmail);
+        user.setPassword(normalizedPassword);
+        user.setRole(UserRole.PROVIDER);
+
+        userRepository.save(user);
+
+        invitation.setUsed(true);
+        providerInvitationRepository.save(invitation);
+
+        model.addAttribute("message", "Регистрация провайдера успешно завершена");
+        return "provider-register-success";
+    }
+
+    private ProviderInvitation findValidInvitation(String token, Model model) {
+        ProviderInvitation invitation = providerInvitationRepository.findByToken(token).orElse(null);
+
+        if (invitation == null) {
+            model.addAttribute("error", "Приглашение не найдено");
+            return null;
+        }
+
+        if (invitation.isUsed()) {
+            model.addAttribute("error", "Приглашение уже использовано");
+            return null;
+        }
+
+        return invitation;
+    }
+}
+===== ./src/main/java/com/careflow/controller/UserController.java =====
+package com.careflow.controller;
 
 import com.careflow.model.User;
 import com.careflow.service.UserService;
@@ -232,7 +875,9 @@ public class UserController {
         userService.deleteUserById(id);
         return ResponseEntity.noContent().build();
     }
-}package com.careflow;
+}
+===== ./src/main/java/com/careflow/CareflowApplication.java =====
+package com.careflow;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -244,6 +889,71 @@ public class CareflowApplication {
 		SpringApplication.run(CareflowApplication.class, args);
 	}
 }
+
+//	http://localhost:8080/auth/login
+//	admin
+//	123
+
+===== ./src/main/java/com/careflow/model/ProviderInvitation.java =====
+package com.careflow.model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "provider_invitations")
+public class ProviderInvitation {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false, unique = true)
+    private String token;
+
+    @Column(nullable = false)
+    private boolean used;
+
+    public ProviderInvitation() {
+    }
+
+    public ProviderInvitation(String email, String token, boolean used) {
+        this.email = email;
+        this.token = token;
+        this.used = used;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public boolean isUsed() {
+        return used;
+    }
+
+    public void setUsed(boolean used) {
+        this.used = used;
+    }
+}
+===== ./src/main/java/com/careflow/model/Activity.java =====
 package com.careflow.model;
 
 import jakarta.persistence.Column;
@@ -369,13 +1079,17 @@ public class Activity {
     public void setStatus(ActivityStatus status) {
         this.status = status;
     }
-}package com.careflow.model;
+}
+===== ./src/main/java/com/careflow/model/UserRole.java =====
+package com.careflow.model;
 
 public enum UserRole {
     CLIENT,
     PROVIDER,
     ADMIN
 }
+
+===== ./src/main/java/com/careflow/model/AppointmentStatus.java =====
 package com.careflow.model;
 
 public enum AppointmentStatus {
@@ -385,7 +1099,9 @@ public enum AppointmentStatus {
     AWAITING_PAYMENT,
     CONFIRMED,
     COMPLETED
-}package com.careflow.model;
+}
+===== ./src/main/java/com/careflow/model/Appointment.java =====
+package com.careflow.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -488,7 +1204,9 @@ public class Appointment {
     public void setStatus(AppointmentStatus status) {
         this.status = status;
     }
-}package com.careflow.model;
+}
+===== ./src/main/java/com/careflow/model/User.java =====
+package com.careflow.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -575,12 +1293,68 @@ public class User {
     public void setRole(UserRole role) {
         this.role = role;
     }
-}package com.careflow.model;
+}
+===== ./src/main/java/com/careflow/model/ActivityStatus.java =====
+package com.careflow.model;
 
 public enum ActivityStatus {
     ACTIVE,
     INACTIVE
-}package com.careflow.service;
+}
+===== ./src/main/java/com/careflow/service/AdminService.java =====
+package com.careflow.service;
+
+import com.careflow.model.ProviderInvitation;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.repository.ProviderInvitationRepository;
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class AdminService {
+
+    private final UserRepository userRepository;
+    private final ProviderInvitationRepository providerInvitationRepository;
+
+    public AdminService(UserRepository userRepository,
+                        ProviderInvitationRepository providerInvitationRepository) {
+        this.userRepository = userRepository;
+        this.providerInvitationRepository = providerInvitationRepository;
+    }
+
+    public List<User> getProviders() {
+        return userRepository.findByRole(UserRole.PROVIDER);
+    }
+
+    public boolean createProviderInvitation(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            return false;
+        }
+
+        if (providerInvitationRepository.existsByEmailAndUsedFalse(normalizedEmail)) {
+            return false;
+        }
+
+        providerInvitationRepository.save(createInvitation(normalizedEmail));
+        return true;
+    }
+
+    private ProviderInvitation createInvitation(String email) {
+        ProviderInvitation invitation = new ProviderInvitation();
+        invitation.setEmail(email);
+        invitation.setToken(UUID.randomUUID().toString());
+        invitation.setUsed(false);
+        return invitation;
+    }
+}
+===== ./src/main/java/com/careflow/service/UserService.java =====
+package com.careflow.service;
 
 import com.careflow.exception.UserNotFoundException;
 import com.careflow.model.User;
@@ -670,7 +1444,9 @@ public class UserService {
             throw new IllegalArgumentException("Email already exists: " + email);
         }
     }
-}package com.careflow.service;
+}
+===== ./src/main/java/com/careflow/service/AppointmentService.java =====
+package com.careflow.service;
 
 import com.careflow.exception.AppointmentNotFoundException;
 import com.careflow.exception.UserNotFoundException;
@@ -906,7 +1682,30 @@ public class AppointmentService {
             throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
         }
     }
-}package com.careflow.service;
+}
+===== ./src/main/java/com/careflow/service/AuthService.java =====
+package com.careflow.service;
+
+import com.careflow.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuthService {
+
+    private final UserRepository userRepository;
+
+    public AuthService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public boolean authenticate(String username, String password) {
+        return userRepository.findByUsername(username)
+                .map(user -> user.getPassword().equals(password))
+                .orElse(false);
+    }
+}
+===== ./src/main/java/com/careflow/service/ActivityService.java =====
+package com.careflow.service;
 
 import com.careflow.exception.ActivityNotFoundException;
 import com.careflow.exception.UserNotFoundException;
@@ -1001,7 +1800,9 @@ public class ActivityService {
             throw new IllegalArgumentException("Only PROVIDER can own activity");
         }
     }
-}package com.careflow.exception;
+}
+===== ./src/main/java/com/careflow/exception/UserNotFoundException.java =====
+package com.careflow.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -1012,7 +1813,9 @@ public class UserNotFoundException extends RuntimeException {
     public UserNotFoundException(Long id) {
         super("User with id " + id + " not found");
     }
-}package com.careflow.exception;
+}
+===== ./src/main/java/com/careflow/exception/GlobalExceptionHandler.java =====
+package com.careflow.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -1051,7 +1854,9 @@ public class GlobalExceptionHandler {
         body.put("error", message);
         return body;
     }
-}package com.careflow.exception;
+}
+===== ./src/main/java/com/careflow/exception/ActivityNotFoundException.java =====
+package com.careflow.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -1062,7 +1867,9 @@ public class ActivityNotFoundException extends RuntimeException {
     public ActivityNotFoundException(Long id) {
         super("Activity with id " + id + " not found");
     }
-}package com.careflow.exception;
+}
+===== ./src/main/java/com/careflow/exception/AppointmentNotFoundException.java =====
+package com.careflow.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

@@ -10,3 +10,7 @@ public class CareflowApplication {
 		SpringApplication.run(CareflowApplication.class, args);
 	}
 }
+
+//	http://localhost:8080/auth/login
+//	admin
+//	123
