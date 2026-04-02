@@ -14,3 +14,5 @@ public class CareflowApplication {
 //	http://localhost:8080/auth/login
 //	admin
 //	123
+
+//	http://localhost:8080/provider/register?token=

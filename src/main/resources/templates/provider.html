@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Provider Page</title>
+</head>
+<body>
+
+<h2>Provider Page</h2>
+
+<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
+<p>Role: <span th:text="${currentUser.role}"></span></p>
+<p>Email: <span th:text="${currentUser.email}"></span></p>
+
+<div style="margin-top: 20px;">
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+</body>
+</html>
