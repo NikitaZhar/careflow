@@ -5,77 +5,139 @@ SELECT 'admin', 'nikita.zharinov@gmail.com', '123', 'ADMIN'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE username = 'admin'
 );
+===== ./target/classes/templates/client.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Client Page</title>
+</head>
+<body>
+
+<h2>Client Page</h2>
+
+<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
+<p>Role: <span th:text="${currentUser.role}"></span></p>
+<p>Email: <span th:text="${currentUser.email}"></span></p>
+
+<div style="margin-top: 20px;">
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+</body>
+</html>
 ===== ./target/classes/templates/admin.html =====
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<title>Admin Page</title>
+    <meta charset="UTF-8">
+    <title>Admin Page</title>
 </head>
 <body>
 
-	<h2 id="pageTitle">Список провайдеров</h2>
+<!-- Блок текущего пользователя -->
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
 
-	<button id="addButton" type="button" onclick="showInviteForm()">
-		Добавить провайдера
-	</button>
+<h2 id="pageTitle">Список провайдеров</h2>
 
-	<div id="inviteForm" style="display: none; margin-top: 15px;">
-		<form th:action="@{/admin/providers/invite}" method="post">
-			<div>
-				<label for="email">Введите email провайдера:</label>
-				<input id="email" type="email" name="email" required>
-			</div>
-			<div style="margin-top: 10px;">
-				<button type="submit">Отправить приглашение</button>
-			</div>
-		</form>
-	</div>
+<button id="addButton" type="button" onclick="showInviteForm()">
+    Добавить провайдера
+</button>
 
-	<div id="messageBlock" th:if="${message}">
-		<p th:text="${message}" style="color: green;"></p>
-	</div>
+<div id="inviteForm" style="display: none; margin-top: 15px;">
+    <form th:action="@{/admin/providers/invite}" method="post">
+        <div>
+            <label for="email">Введите email провайдера:</label>
+            <input id="email" type="email" name="email" required>
+        </div>
 
-	<div id="errorBlock" th:if="${error}">
-		<p th:text="${error}" style="color: red;"></p>
-	</div>
+        <div style="margin-top: 10px;">
+            <button type="submit">Отправить приглашение</button>
+        </div>
+    </form>
+</div>
 
-	<div th:if="${#lists.isEmpty(providers)}">
-		<p>Список провайдеров пустой</p>
-	</div>
+<div id="messageBlock" th:if="${message}">
+    <p th:text="${message}" style="color: green;"></p>
+</div>
 
-	<table th:if="${not #lists.isEmpty(providers)}">
-		<thead>
-			<tr>
-				<th>№</th>
-				<th>Username</th>
-				<th>Email</th>
-				<th>Role</th>
-			</tr>
-		</thead>
-		<tbody>
-			<tr th:each="provider, stat : ${providers}">
-				<td th:text="${stat.index + 1}"></td>
-				<td th:text="${provider.username}"></td>
-				<td th:text="${provider.email}"></td>
-				<td th:text="${provider.role}"></td>
-			</tr>
-		</tbody>
-	</table>
+<div id="errorBlock" th:if="${error}">
+    <p th:text="${error}" style="color: red;"></p>
+</div>
 
-	<script>
-	function showInviteForm() {
-	    document.getElementById('inviteForm').style.display = 'block';
-	    document.getElementById('pageTitle').textContent = 'Добавить провайдера';
-	    document.getElementById('addButton').style.display = 'none';
+<div th:if="${#lists.isEmpty(providers)}">
+    <p>Список провайдеров пустой</p>
+</div>
 
-	    const message = document.getElementById('messageBlock');
-	    const error = document.getElementById('errorBlock');
+<table th:if="${not #lists.isEmpty(providers)}">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="provider, stat : ${providers}">
+            <td th:text="${stat.index + 1}"></td>
+            <td th:text="${provider.username}"></td>
+            <td th:text="${provider.email}"></td>
+            <td th:text="${provider.role}"></td>
+        </tr>
+    </tbody>
+</table>
 
-	    if (message) message.style.display = 'none';
-	    if (error) error.style.display = 'none';
-	}
-	</script>
+<script>
+    function showInviteForm() {
+        document.getElementById('inviteForm').style.display = 'block';
+        document.getElementById('pageTitle').textContent = 'Добавить провайдера';
+        document.getElementById('addButton').style.display = 'none';
+
+        const message = document.getElementById('messageBlock');
+        const error = document.getElementById('errorBlock');
+
+        if (message) {
+            message.style.display = 'none';
+        }
+
+        if (error) {
+            error.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
+===== ./target/classes/templates/provider.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Provider Page</title>
+</head>
+<body>
+
+<h2>Provider Page</h2>
+
+<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
+<p>Role: <span th:text="${currentUser.role}"></span></p>
+<p>Email: <span th:text="${currentUser.email}"></span></p>
+
+<div style="margin-top: 20px;">
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
 
 </body>
 </html>
@@ -244,77 +306,139 @@ SELECT 'admin', 'nikita.zharinov@gmail.com', '123', 'ADMIN'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE username = 'admin'
 );
+===== ./src/main/resources/templates/client.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Client Page</title>
+</head>
+<body>
+
+<h2>Client Page</h2>
+
+<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
+<p>Role: <span th:text="${currentUser.role}"></span></p>
+<p>Email: <span th:text="${currentUser.email}"></span></p>
+
+<div style="margin-top: 20px;">
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+</body>
+</html>
 ===== ./src/main/resources/templates/admin.html =====
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<title>Admin Page</title>
+    <meta charset="UTF-8">
+    <title>Admin Page</title>
 </head>
 <body>
 
-	<h2 id="pageTitle">Список провайдеров</h2>
+<!-- Блок текущего пользователя -->
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
 
-	<button id="addButton" type="button" onclick="showInviteForm()">
-		Добавить провайдера
-	</button>
+<h2 id="pageTitle">Список провайдеров</h2>
 
-	<div id="inviteForm" style="display: none; margin-top: 15px;">
-		<form th:action="@{/admin/providers/invite}" method="post">
-			<div>
-				<label for="email">Введите email провайдера:</label>
-				<input id="email" type="email" name="email" required>
-			</div>
-			<div style="margin-top: 10px;">
-				<button type="submit">Отправить приглашение</button>
-			</div>
-		</form>
-	</div>
+<button id="addButton" type="button" onclick="showInviteForm()">
+    Добавить провайдера
+</button>
 
-	<div id="messageBlock" th:if="${message}">
-		<p th:text="${message}" style="color: green;"></p>
-	</div>
+<div id="inviteForm" style="display: none; margin-top: 15px;">
+    <form th:action="@{/admin/providers/invite}" method="post">
+        <div>
+            <label for="email">Введите email провайдера:</label>
+            <input id="email" type="email" name="email" required>
+        </div>
 
-	<div id="errorBlock" th:if="${error}">
-		<p th:text="${error}" style="color: red;"></p>
-	</div>
+        <div style="margin-top: 10px;">
+            <button type="submit">Отправить приглашение</button>
+        </div>
+    </form>
+</div>
 
-	<div th:if="${#lists.isEmpty(providers)}">
-		<p>Список провайдеров пустой</p>
-	</div>
+<div id="messageBlock" th:if="${message}">
+    <p th:text="${message}" style="color: green;"></p>
+</div>
 
-	<table th:if="${not #lists.isEmpty(providers)}">
-		<thead>
-			<tr>
-				<th>№</th>
-				<th>Username</th>
-				<th>Email</th>
-				<th>Role</th>
-			</tr>
-		</thead>
-		<tbody>
-			<tr th:each="provider, stat : ${providers}">
-				<td th:text="${stat.index + 1}"></td>
-				<td th:text="${provider.username}"></td>
-				<td th:text="${provider.email}"></td>
-				<td th:text="${provider.role}"></td>
-			</tr>
-		</tbody>
-	</table>
+<div id="errorBlock" th:if="${error}">
+    <p th:text="${error}" style="color: red;"></p>
+</div>
 
-	<script>
-	function showInviteForm() {
-	    document.getElementById('inviteForm').style.display = 'block';
-	    document.getElementById('pageTitle').textContent = 'Добавить провайдера';
-	    document.getElementById('addButton').style.display = 'none';
+<div th:if="${#lists.isEmpty(providers)}">
+    <p>Список провайдеров пустой</p>
+</div>
 
-	    const message = document.getElementById('messageBlock');
-	    const error = document.getElementById('errorBlock');
+<table th:if="${not #lists.isEmpty(providers)}">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="provider, stat : ${providers}">
+            <td th:text="${stat.index + 1}"></td>
+            <td th:text="${provider.username}"></td>
+            <td th:text="${provider.email}"></td>
+            <td th:text="${provider.role}"></td>
+        </tr>
+    </tbody>
+</table>
 
-	    if (message) message.style.display = 'none';
-	    if (error) error.style.display = 'none';
-	}
-	</script>
+<script>
+    function showInviteForm() {
+        document.getElementById('inviteForm').style.display = 'block';
+        document.getElementById('pageTitle').textContent = 'Добавить провайдера';
+        document.getElementById('addButton').style.display = 'none';
+
+        const message = document.getElementById('messageBlock');
+        const error = document.getElementById('errorBlock');
+
+        if (message) {
+            message.style.display = 'none';
+        }
+
+        if (error) {
+            error.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
+===== ./src/main/resources/templates/provider.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Provider Page</title>
+</head>
+<body>
+
+<h2>Provider Page</h2>
+
+<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
+<p>Role: <span th:text="${currentUser.role}"></span></p>
+<p>Email: <span th:text="${currentUser.email}"></span></p>
+
+<div style="margin-top: 20px;">
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
 
 </body>
 </html>
@@ -497,7 +621,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 ===== ./src/main/java/com/careflow/controller/AdminController.java =====
 package com.careflow.controller;
 
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
 import com.careflow.service.AdminService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -507,6 +634,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class AdminController {
 
+    private static final String SESSION_USER = "user";
+
     private final AdminService adminService;
 
     public AdminController(AdminService adminService) {
@@ -514,15 +643,32 @@ public class AdminController {
     }
 
     @GetMapping("/admin")
-    public String showAdminPage(Model model) {
+    public String showAdminPage(HttpSession session, Model model) {
+        User currentUser = getAuthorizedUser(session, UserRole.ADMIN);
+
+        if (currentUser == null) {
+            return "redirect:/auth/login";
+        }
+
+        model.addAttribute("currentUser", currentUser);
         loadProviders(model);
         return "admin";
     }
 
     @PostMapping("/admin/providers/invite")
-    public String inviteProvider(@RequestParam String email, Model model) {
+    public String inviteProvider(@RequestParam String email,
+                                 HttpSession session,
+                                 Model model) {
+
+        User currentUser = getAuthorizedUser(session, UserRole.ADMIN);
+
+        if (currentUser == null) {
+            return "redirect:/auth/login";
+        }
+
         boolean created = adminService.createProviderInvitation(email);
 
+        model.addAttribute("currentUser", currentUser);
         loadProviders(model);
 
         if (!created) {
@@ -536,6 +682,51 @@ public class AdminController {
 
     private void loadProviders(Model model) {
         model.addAttribute("providers", adminService.getProviders());
+    }
+
+    private User getAuthorizedUser(HttpSession session, UserRole requiredRole) {
+        User currentUser = (User) session.getAttribute(SESSION_USER);
+
+        if (currentUser == null) {
+            return null;
+        }
+
+        if (currentUser.getRole() != requiredRole) {
+            return null;
+        }
+
+        return currentUser;
+    }
+}
+===== ./src/main/java/com/careflow/controller/ClientController.java =====
+package com.careflow.controller;
+
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class ClientController {
+
+    private static final String SESSION_USER = "user";
+
+    @GetMapping("/client")
+    public String showClientPage(HttpSession session, Model model) {
+        User currentUser = (User) session.getAttribute("user");
+
+        if (currentUser == null) {
+            return "redirect:/auth/login";
+        }
+
+        if (currentUser.getRole() != UserRole.CLIENT) {
+            return "redirect:/auth/login";
+        }
+
+        model.addAttribute("currentUser", currentUser);
+        return "client";
     }
 }
 ===== ./src/main/java/com/careflow/controller/AppointmentController.java =====
@@ -632,17 +823,22 @@ public class AppointmentController {
 ===== ./src/main/java/com/careflow/controller/AuthController.java =====
 package com.careflow.controller;
 
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
 import com.careflow.service.AuthService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final String SESSION_USER = "user";
 
     private final AuthService authService;
 
@@ -651,23 +847,54 @@ public class AuthController {
     }
 
     @GetMapping("/login")
-    public String showLoginPage() {
+    public String showLoginPage(HttpSession session) {
+        User currentUser = (User) session.getAttribute(SESSION_USER);
+
+        if (currentUser != null) {
+            return redirectByRole(currentUser.getRole());
+        }
+
         return "login";
     }
 
     @PostMapping("/login")
     public String login(@RequestParam String username,
                         @RequestParam String password,
+                        HttpSession session,
                         Model model) {
 
-        boolean authenticated = authService.authenticate(username, password);
+        User authenticatedUser = authService.authenticate(username, password);
 
-        if (!authenticated) {
+        if (authenticatedUser == null) {
             model.addAttribute("error", "Invalid username or password");
             return "login";
         }
 
-        return "redirect:/admin";
+        session.setAttribute(SESSION_USER, authenticatedUser);
+
+        return redirectByRole(authenticatedUser.getRole());
+    }
+
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        session.invalidate();
+        return "redirect:/auth/login";
+    }
+
+    private String redirectByRole(UserRole role) {
+        if (role == UserRole.ADMIN) {
+            return "redirect:/admin";
+        }
+
+        if (role == UserRole.PROVIDER) {
+            return "redirect:/provider";
+        }
+
+        if (role == UserRole.CLIENT) {
+            return "redirect:/client";
+        }
+
+        return "redirect:/auth/login";
     }
 }
 ===== ./src/main/java/com/careflow/controller/ActivityController.java =====
@@ -724,10 +951,8 @@ public class ActivityController {
 package com.careflow.controller;
 
 import com.careflow.model.ProviderInvitation;
-import com.careflow.model.User;
-import com.careflow.model.UserRole;
-import com.careflow.repository.ProviderInvitationRepository;
-import com.careflow.repository.UserRepository;
+import com.careflow.service.ProviderRegistrationService;
+import com.careflow.service.ProviderRegistrationService.RegistrationResult;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -737,20 +962,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class ProviderRegistrationController {
 
-    private final ProviderInvitationRepository providerInvitationRepository;
-    private final UserRepository userRepository;
+    private final ProviderRegistrationService providerRegistrationService;
 
-    public ProviderRegistrationController(ProviderInvitationRepository providerInvitationRepository,
-                                          UserRepository userRepository) {
-        this.providerInvitationRepository = providerInvitationRepository;
-        this.userRepository = userRepository;
+    public ProviderRegistrationController(ProviderRegistrationService providerRegistrationService) {
+        this.providerRegistrationService = providerRegistrationService;
     }
 
     @GetMapping("/provider/register")
     public String showRegistrationPage(@RequestParam String token, Model model) {
-        ProviderInvitation invitation = findValidInvitation(token, model);
+        ProviderInvitation invitation = providerRegistrationService.findValidInvitation(token);
 
         if (invitation == null) {
+            model.addAttribute("error", "Приглашение не найдено или уже использовано");
             return "provider-register-error";
         }
 
@@ -765,66 +988,56 @@ public class ProviderRegistrationController {
                                    @RequestParam String username,
                                    @RequestParam String password,
                                    Model model) {
-        ProviderInvitation invitation = findValidInvitation(token, model);
+
+        ProviderInvitation invitation = providerRegistrationService.findValidInvitation(token);
 
         if (invitation == null) {
+            model.addAttribute("error", "Приглашение не найдено или уже использовано");
             return "provider-register-error";
         }
 
-        String normalizedUsername = username.trim();
-        String normalizedPassword = password.trim();
-        String invitationEmail = invitation.getEmail().trim().toLowerCase();
+        RegistrationResult result = providerRegistrationService.registerProvider(token, username, password);
 
-        if (normalizedUsername.isEmpty() || normalizedPassword.isEmpty()) {
+        if (!result.success()) {
             model.addAttribute("token", token);
             model.addAttribute("email", invitation.getEmail());
-            model.addAttribute("error", "Username и password обязательны");
+            model.addAttribute("error", result.message());
             return "provider-register";
         }
 
-        if (userRepository.existsByUsername(normalizedUsername)) {
-            model.addAttribute("token", token);
-            model.addAttribute("email", invitation.getEmail());
-            model.addAttribute("error", "Пользователь с таким username уже существует");
-            return "provider-register";
-        }
-
-        if (userRepository.existsByEmail(invitationEmail)) {
-            model.addAttribute("token", token);
-            model.addAttribute("email", invitation.getEmail());
-            model.addAttribute("error", "Пользователь с таким email уже существует");
-            return "provider-register";
-        }
-
-        User user = new User();
-        user.setUsername(normalizedUsername);
-        user.setEmail(invitationEmail);
-        user.setPassword(normalizedPassword);
-        user.setRole(UserRole.PROVIDER);
-
-        userRepository.save(user);
-
-        invitation.setUsed(true);
-        providerInvitationRepository.save(invitation);
-
-        model.addAttribute("message", "Регистрация провайдера успешно завершена");
+        model.addAttribute("message", result.message());
         return "provider-register-success";
     }
+}
+===== ./src/main/java/com/careflow/controller/ProviderController.java =====
+package com.careflow.controller;
 
-    private ProviderInvitation findValidInvitation(String token, Model model) {
-        ProviderInvitation invitation = providerInvitationRepository.findByToken(token).orElse(null);
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 
-        if (invitation == null) {
-            model.addAttribute("error", "Приглашение не найдено");
-            return null;
+@Controller
+public class ProviderController {
+
+    private static final String SESSION_USER = "user";
+
+    @GetMapping("/provider")
+    public String showProviderPage(HttpSession session, Model model) {
+        User currentUser = (User) session.getAttribute(SESSION_USER);
+
+        if (currentUser == null) {
+            return "redirect:/auth/login";
         }
 
-        if (invitation.isUsed()) {
-            model.addAttribute("error", "Приглашение уже использовано");
-            return null;
+        if (currentUser.getRole() != UserRole.PROVIDER) {
+            return "redirect:/auth/login";
         }
 
-        return invitation;
+        model.addAttribute("currentUser", currentUser);
+        return "provider";
     }
 }
 ===== ./src/main/java/com/careflow/controller/UserController.java =====
@@ -893,6 +1106,8 @@ public class CareflowApplication {
 //	http://localhost:8080/auth/login
 //	admin
 //	123
+
+//	http://localhost:8080/provider/register?token=
 
 ===== ./src/main/java/com/careflow/model/ProviderInvitation.java =====
 package com.careflow.model;
@@ -1686,6 +1901,7 @@ public class AppointmentService {
 ===== ./src/main/java/com/careflow/service/AuthService.java =====
 package com.careflow.service;
 
+import com.careflow.model.User;
 import com.careflow.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -1698,10 +1914,21 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    public boolean authenticate(String username, String password) {
-        return userRepository.findByUsername(username)
-                .map(user -> user.getPassword().equals(password))
-                .orElse(false);
+    public User authenticate(String username, String password) {
+        if (username == null || password == null) {
+            return null;
+        }
+
+        String normalizedUsername = username.trim();
+        String normalizedPassword = password.trim();
+
+        if (normalizedUsername.isEmpty() || normalizedPassword.isEmpty()) {
+            return null;
+        }
+
+        return userRepository.findByUsername(normalizedUsername)
+                .filter(user -> user.getPassword().equals(normalizedPassword))
+                .orElse(null);
     }
 }
 ===== ./src/main/java/com/careflow/service/ActivityService.java =====
@@ -1798,6 +2025,86 @@ public class ActivityService {
     private void validateProviderRole(User provider) {
         if (provider.getRole() != UserRole.PROVIDER) {
             throw new IllegalArgumentException("Only PROVIDER can own activity");
+        }
+    }
+}
+===== ./src/main/java/com/careflow/service/ProviderRegistrationService.java =====
+package com.careflow.service;
+
+import org.springframework.stereotype.Service;
+
+import com.careflow.model.ProviderInvitation;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.repository.ProviderInvitationRepository;
+import com.careflow.repository.UserRepository;
+
+@Service
+public class ProviderRegistrationService {
+
+    private final ProviderInvitationRepository providerInvitationRepository;
+    private final UserRepository userRepository;
+
+    public ProviderRegistrationService(ProviderInvitationRepository providerInvitationRepository,
+                                       UserRepository userRepository) {
+        this.providerInvitationRepository = providerInvitationRepository;
+        this.userRepository = userRepository;
+    }
+
+    public ProviderInvitation findValidInvitation(String token) {
+        ProviderInvitation invitation = providerInvitationRepository.findByToken(token).orElse(null);
+
+        if (invitation == null || invitation.isUsed()) {
+            return null;
+        }
+
+        return invitation;
+    }
+
+    public RegistrationResult registerProvider(String token, String username, String password) {
+        ProviderInvitation invitation = findValidInvitation(token);
+
+        if (invitation == null) {
+            return RegistrationResult.error("Приглашение не найдено или уже использовано");
+        }
+
+        String normalizedUsername = username == null ? "" : username.trim();
+        String normalizedPassword = password == null ? "" : password.trim();
+        String invitationEmail = invitation.getEmail().trim().toLowerCase();
+
+        if (normalizedUsername.isEmpty() || normalizedPassword.isEmpty()) {
+            return RegistrationResult.error("Username и password обязательны");
+        }
+
+        if (userRepository.existsByUsername(normalizedUsername)) {
+            return RegistrationResult.error("Пользователь с таким username уже существует");
+        }
+
+        if (userRepository.existsByEmail(invitationEmail)) {
+            return RegistrationResult.error("Пользователь с таким email уже существует");
+        }
+
+        User user = new User();
+        user.setUsername(normalizedUsername);
+        user.setEmail(invitationEmail);
+        user.setPassword(normalizedPassword);
+        user.setRole(UserRole.PROVIDER);
+
+        userRepository.save(user);
+
+        invitation.setUsed(true);
+        providerInvitationRepository.save(invitation);
+
+        return RegistrationResult.success("Регистрация провайдера успешно завершена");
+    }
+
+    public record RegistrationResult(boolean success, String message) {
+        public static RegistrationResult success(String message) {
+            return new RegistrationResult(true, message);
+        }
+
+        public static RegistrationResult error(String message) {
+            return new RegistrationResult(false, message);
         }
     }
 }

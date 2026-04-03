@@ -1,34 +1,36 @@
 package com.careflow.controller;
 
+import com.careflow.controller.auth.RoleRedirectResolver;
+import com.careflow.controller.auth.SessionUserValidator;
 import com.careflow.model.User;
-import com.careflow.model.UserRole;
 import com.careflow.service.AuthService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/auth")
 public class AuthController {
 
-    private static final String SESSION_USER = "user";
-
     private final AuthService authService;
+    private final SessionUserValidator sessionValidator;
+    private final RoleRedirectResolver redirectResolver;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          SessionUserValidator sessionValidator,
+                          RoleRedirectResolver redirectResolver) {
         this.authService = authService;
+        this.sessionValidator = sessionValidator;
+        this.redirectResolver = redirectResolver;
     }
 
     @GetMapping("/login")
     public String showLoginPage(HttpSession session) {
-        User currentUser = (User) session.getAttribute(SESSION_USER);
+        User user = sessionValidator.getCurrentUser(session);
 
-        if (currentUser != null) {
-            return redirectByRole(currentUser.getRole());
+        if (user != null) {
+            return redirectResolver.resolve(user.getRole());
         }
 
         return "login";
@@ -40,37 +42,20 @@ public class AuthController {
                         HttpSession session,
                         Model model) {
 
-        User authenticatedUser = authService.authenticate(username, password);
+        User user = authService.authenticate(username, password);
 
-        if (authenticatedUser == null) {
+        if (user == null) {
             model.addAttribute("error", "Invalid username or password");
             return "login";
         }
 
-        session.setAttribute(SESSION_USER, authenticatedUser);
-
-        return redirectByRole(authenticatedUser.getRole());
+        sessionValidator.save(session, user);
+        return redirectResolver.resolve(user.getRole());
     }
 
     @GetMapping("/logout")
     public String logout(HttpSession session) {
-        session.invalidate();
-        return "redirect:/auth/login";
-    }
-
-    private String redirectByRole(UserRole role) {
-        if (role == UserRole.ADMIN) {
-            return "redirect:/admin";
-        }
-
-        if (role == UserRole.PROVIDER) {
-            return "redirect:/provider";
-        }
-
-        if (role == UserRole.CLIENT) {
-            return "redirect:/client";
-        }
-
+        sessionValidator.clear(session);
         return "redirect:/auth/login";
     }
 }

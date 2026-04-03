@@ -29,7 +29,6 @@ public class ProviderRegistrationController {
 
         model.addAttribute("token", token);
         model.addAttribute("email", invitation.getEmail());
-
         return "provider-register";
     }
 
@@ -38,7 +37,6 @@ public class ProviderRegistrationController {
                                    @RequestParam String username,
                                    @RequestParam String password,
                                    Model model) {
-
         ProviderInvitation invitation = providerRegistrationService.findValidInvitation(token);
 
         if (invitation == null) {
