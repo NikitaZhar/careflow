@@ -6,15 +6,134 @@
 </head>
 <body>
 
-<h2>Provider Page</h2>
-
-<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
-<p>Role: <span th:text="${currentUser.role}"></span></p>
-<p>Email: <span th:text="${currentUser.email}"></span></p>
-
-<div style="margin-top: 20px;">
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
     <a th:href="@{/auth/logout}">Logout</a>
 </div>
+
+<h2 id="pageTitle">Мои активности</h2>
+
+<button id="addButton" type="button" onclick="showActivityForm()">
+    Добавить услугу
+</button>
+
+<div id="activityForm" style="display: none; margin-top: 20px;">
+    <h3>Создать услугу</h3>
+
+    <form th:action="@{/provider/activities}" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="title">Название:</label>
+            <input id="title"
+                   type="text"
+                   name="title"
+                   placeholder="Введите название услуги"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="description">Описание:</label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      cols="50"
+                      placeholder="Опишите услугу"
+                      required></textarea>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="price">Цена:</label>
+            <input id="price"
+                   type="number"
+                   name="price"
+                   step="0.01"
+                   min="0.01"
+                   placeholder="Например: 1000"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="durationMinutes">Длительность (мин):</label>
+            <input id="durationMinutes"
+                   type="number"
+                   name="durationMinutes"
+                   min="1"
+                   placeholder="Например: 60"
+                   required>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <p><strong>Необязательные материалы:</strong></p>
+
+            <div style="margin-top: 10px;">
+                <label for="document">Загрузить текстовый или PDF файл:</label>
+                <input id="document"
+                       type="file"
+                       name="document"
+                       accept=".txt,.pdf">
+            </div>
+
+            <div style="margin-top: 10px;">
+                <label for="video">Загрузить видео файл:</label>
+                <input id="video"
+                       type="file"
+                       name="video"
+                       accept="video/*">
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Создать услугу</button>
+        </div>
+    </form>
+</div>
+
+<div th:if="${#lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <p>Список активностей пуст</p>
+</div>
+
+<table th:if="${not #lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Услуга</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="activity, stat : ${activities}" style="vertical-align: top;">
+            <td th:text="${stat.index + 1}"></td>
+            <td>
+    		<a th:href="@{/provider/activities/{id}(id=${activity.id})}"
+       			style="display: inline-block;
+             	max-width: 60ch;
+              	text-decoration: none;
+              	color: inherit;
+              	word-break: break-word;">
+
+        	<span>
+            	<span th:text="${activity.title}"></span>
+            	<span> </span>
+            	<span th:text="${activity.description}"></span>
+        	</span>
+		    </a>
+			</td>
+		</tr>
+    </tbody>
+</table>
+
+<script>
+    function showActivityForm() {
+        document.getElementById('activityForm').style.display = 'block';
+        document.getElementById('addButton').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>

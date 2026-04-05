@@ -44,6 +44,10 @@ public class ActivityService {
     public List<Activity> findAllActivities() {
         return activityRepository.findAll();
     }
+    
+    public List<Activity> findActivitiesByProviderId(Long providerId) {
+        return activityRepository.findByProviderId(providerId);
+    }
 
     public Activity findActivityById(Long id) {
         return findActivityByIdOrThrow(id);
