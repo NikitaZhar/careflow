@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование услуги</title>
+</head>
+<body>
+
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+<h2>Редактирование услуги</h2>
+
+<form id="activityForm"
+      th:action="@{/provider/activities/{id}(id=${activity.id})}"
+      method="post"
+      enctype="multipart/form-data">
+
+    <div>
+        <label for="title">Название:</label>
+        <input id="title"
+               type="text"
+               name="title"
+               th:value="${activity.title}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="description">Описание:</label>
+        <textarea id="description"
+                  name="description"
+                  rows="4"
+                  cols="50"
+                  required
+                  th:text="${activity.description}"></textarea>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="price">Цена:</label>
+        <input id="price"
+               type="number"
+               name="price"
+               step="0.01"
+               min="0.01"
+               th:value="${activity.price}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="durationMinutes">Длительность (мин):</label>
+        <input id="durationMinutes"
+               type="number"
+               name="durationMinutes"
+               min="1"
+               th:value="${activity.durationMinutes}"
+               required>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <p><strong>Необязательные материалы:</strong></p>
+
+        <div style="margin-top: 10px;">
+            <label for="document">Загрузить текстовый или PDF файл:</label>
+            <input id="document" type="file" name="document" accept=".txt,.pdf">
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="video">Загрузить видео файл:</label>
+            <input id="video" type="file" name="video" accept="video/*">
+        </div>
+    </div>
+
+    <h3 style="margin-top: 30px;">Доступные термины</h3>
+
+    <table id="appointmentsTable" style="margin-top: 10px;">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Начало</th>
+                <th>Конец</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="appointment : ${availableAppointments}"
+                th:attr="data-existing-id=${appointment.id}">
+                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
+                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
+                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
+                <td>
+                    <button type="button"
+                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
+                        Удалить
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <label for="newAppointmentDate">Дата:</label>
+        <input id="newAppointmentDate" type="date">
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Время начала:</label>
+
+        <select id="newAppointmentHour">
+            <option value="">Час</option>
+            <option th:each="h : ${#numbers.sequence(0,23)}"
+                    th:value="${h < 10 ? '0' + h : h}"
+                    th:text="${h < 10 ? '0' + h : h}">
+            </option>
+        </select>
+
+        <span>:</span>
+
+        <select id="newAppointmentMinute">
+            <option value="">Мин</option>
+            <option value="00">00</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+        </select>
+
+        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
+            Добавить
+        </button>
+    </div>
+
+    <div id="hiddenAppointments"></div>
+</form>
+
+<div style="margin-top: 30px;">
+    <button type="submit" form="activityForm">Сохранить</button>
+
+    <button type="button"
+            onclick="window.location.href='/provider'"
+            style="margin-left: 10px;">
+        Отменить
+    </button>
+
+    <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
+          method="post"
+          style="display: inline; margin-left: 10px;"
+          onsubmit="return confirm('Удалить услугу?');">
+        <button type="submit">Удалить</button>
+    </form>
+</div>
+
+<script>
+    function addHiddenInput(name, value, group) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        input.dataset.group = group;
+        document.getElementById('hiddenAppointments').appendChild(input);
+    }
+
+    function removeHiddenGroup(group) {
+        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
+    }
+
+    function addDraftAppointment() {
+        const date = document.getElementById('newAppointmentDate').value;
+        const hour = document.getElementById('newAppointmentHour').value;
+        const minute = document.getElementById('newAppointmentMinute').value;
+        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+
+        if (!date || !hour || !minute || !duration) {
+            return;
+        }
+
+        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
+        const end = new Date(start.getTime() + duration * 60000);
+
+        const group = 'new-' + Date.now();
+
+        addHiddenInput('newAppointmentDates', date, group);
+        addHiddenInput('newAppointmentHours', hour, group);
+        addHiddenInput('newAppointmentMinutes', minute, group);
+
+        const row = document.createElement('tr');
+        row.dataset.group = group;
+
+        const formattedDate = start.toLocaleDateString('ru-RU');
+        const startText = hour + ':' + minute;
+        const endHour = String(end.getHours()).padStart(2, '0');
+        const endMinute = String(end.getMinutes()).padStart(2, '0');
+        const endText = endHour + ':' + endMinute;
+
+        row.innerHTML =
+            '<td>' + formattedDate + '</td>' +
+            '<td>' + startText + '</td>' +
+            '<td>' + endText + '</td>' +
+            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+
+        document.querySelector('#appointmentsTable tbody').appendChild(row);
+
+        document.getElementById('newAppointmentDate').value = '';
+        document.getElementById('newAppointmentHour').value = '';
+        document.getElementById('newAppointmentMinute').value = '';
+    }
+
+    function removeDraftAppointment(button, group) {
+        button.closest('tr').remove();
+        removeHiddenGroup(group);
+    }
+
+    function removeExistingAppointment(button, appointmentId) {
+        const group = 'delete-' + appointmentId;
+
+        if (document.querySelector('[data-group="' + group + '"]')) {
+            return;
+        }
+
+        addHiddenInput('appointmentsToDelete', appointmentId, group);
+        button.closest('tr').remove();
+    }
+</script>
+
+</body>
+</html>

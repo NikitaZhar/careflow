@@ -19,219 +19,232 @@ import java.util.List;
 @Service
 public class AppointmentService {
 
-    private final AppointmentRepository appointmentRepository;
-    private final ActivityRepository activityRepository;
-    private final UserRepository userRepository;
+	private final AppointmentRepository appointmentRepository;
+	private final ActivityRepository activityRepository;
+	private final UserRepository userRepository;
 
-    public AppointmentService(AppointmentRepository appointmentRepository,
-                              ActivityRepository activityRepository,
-                              UserRepository userRepository) {
-        this.appointmentRepository = appointmentRepository;
-        this.activityRepository = activityRepository;
-        this.userRepository = userRepository;
-    }
+	public AppointmentService(AppointmentRepository appointmentRepository,
+			ActivityRepository activityRepository,
+			UserRepository userRepository) {
+		this.appointmentRepository = appointmentRepository;
+		this.activityRepository = activityRepository;
+		this.userRepository = userRepository;
+	}
 
-    public Appointment saveAppointment(Appointment appointment) {
-        validateAppointmentTime(appointment.getStartTime(), appointment.getEndTime());
+	public Appointment saveAppointment(Appointment appointment) {
+		validateAppointmentTime(appointment.getStartTime(), appointment.getEndTime());
 
-        Activity activity = resolveActivity(appointment);
-        validateActivityIsActive(activity);
-        validateProviderRole(activity.getProvider());
-        validateNoTimeOverlapForCreate(activity.getId(), appointment.getStartTime(), appointment.getEndTime());
+		Activity activity = resolveActivity(appointment);
+		validateActivityIsActive(activity);
+		validateProviderRole(activity.getProvider());
+		validateNoTimeOverlapForCreate(activity.getId(), appointment.getStartTime(), appointment.getEndTime());
 
-        appointment.setActivity(activity);
-        appointment.setClient(null);
-        appointment.setStatus(AppointmentStatus.AVAILABLE);
+		appointment.setActivity(activity);
+		appointment.setClient(null);
+		appointment.setStatus(AppointmentStatus.AVAILABLE);
 
-        return appointmentRepository.save(appointment);
-    }
+		return appointmentRepository.save(appointment);
+	}
 
-    public List<Appointment> findAllAppointments() {
-        return appointmentRepository.findAll();
-    }
+	public List<Appointment> findAllAppointments() {
+		return appointmentRepository.findAll();
+	}
 
-    public Appointment findAppointmentById(Long id) {
-        return findAppointmentByIdOrThrow(id);
-    }
+	public Appointment findAppointmentById(Long id) {
+		return findAppointmentByIdOrThrow(id);
+	}
 
-    public List<Appointment> findAppointmentsByProviderId(Long providerId) {
-        return appointmentRepository.findByActivityProviderId(providerId);
-    }
+	public List<Appointment> findAppointmentsByProviderId(Long providerId) {
+		return appointmentRepository.findByActivityProviderId(providerId);
+	}
 
-    public List<Appointment> findAppointmentsByClientId(Long clientId) {
-        return appointmentRepository.findByClientId(clientId);
-    }
+	public List<Appointment> findAppointmentsByClientId(Long clientId) {
+		return appointmentRepository.findByClientId(clientId);
+	}
 
-    public List<Appointment> findAvailableAppointmentsByActivityId(Long activityId) {
-        return appointmentRepository.findByActivityIdAndStatus(activityId, AppointmentStatus.AVAILABLE);
-    }
+	public List<Appointment> findAvailableAppointmentsByActivityId(Long activityId) {
+		return appointmentRepository.findByActivityIdAndStatusOrderByStartTimeAsc(
+				activityId,
+				AppointmentStatus.AVAILABLE
+				);
+	}
 
-    public Appointment updateAppointment(Long id, Appointment updatedAppointment) {
-        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+	public boolean existsOverlappingAppointment(Long activityId,
+			LocalDateTime startTime,
+			LocalDateTime endTime) {
+		return appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId,
+				endTime,
+				startTime
+				);
+	}
 
-        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be edited");
-        }
+	public Appointment updateAppointment(Long id, Appointment updatedAppointment) {
+		Appointment existingAppointment = findAppointmentByIdOrThrow(id);
 
-        validateAppointmentTime(updatedAppointment.getStartTime(), updatedAppointment.getEndTime());
+		if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be edited");
+		}
 
-        Activity activity = resolveActivity(updatedAppointment);
-        validateActivityIsActive(activity);
-        validateProviderRole(activity.getProvider());
-        validateNoTimeOverlapForUpdate(
-                activity.getId(),
-                existingAppointment.getId(),
-                updatedAppointment.getStartTime(),
-                updatedAppointment.getEndTime()
-        );
+		validateAppointmentTime(updatedAppointment.getStartTime(), updatedAppointment.getEndTime());
 
-        existingAppointment.setActivity(activity);
-        existingAppointment.setStartTime(updatedAppointment.getStartTime());
-        existingAppointment.setEndTime(updatedAppointment.getEndTime());
+		Activity activity = resolveActivity(updatedAppointment);
+		validateActivityIsActive(activity);
+		validateProviderRole(activity.getProvider());
+		validateNoTimeOverlapForUpdate(
+				activity.getId(),
+				existingAppointment.getId(),
+				updatedAppointment.getStartTime(),
+				updatedAppointment.getEndTime()
+				);
 
-        return appointmentRepository.save(existingAppointment);
-    }
+		existingAppointment.setActivity(activity);
+		existingAppointment.setStartTime(updatedAppointment.getStartTime());
+		existingAppointment.setEndTime(updatedAppointment.getEndTime());
 
-    public void deleteAppointmentById(Long id) {
-        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+		return appointmentRepository.save(existingAppointment);
+	}
 
-        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be deleted");
-        }
+	public void deleteAppointmentById(Long id) {
+		Appointment existingAppointment = findAppointmentByIdOrThrow(id);
 
-        appointmentRepository.delete(existingAppointment);
-    }
+		if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be deleted");
+		}
 
-    public Appointment reserveAppointment(Long appointmentId, Long clientId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointmentRepository.delete(existingAppointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be reserved");
-        }
+	public Appointment reserveAppointment(Long appointmentId, Long clientId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        User client = findUserByIdOrThrow(clientId);
-        validateClientRole(client);
-        validateClientIsNotProvider(client, appointment.getActivity().getProvider());
+		if (appointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be reserved");
+		}
 
-        appointment.setClient(client);
-        appointment.setStatus(AppointmentStatus.PENDING);
+		User client = findUserByIdOrThrow(clientId);
+		validateClientRole(client);
+		validateClientIsNotProvider(client, appointment.getActivity().getProvider());
 
-        return appointmentRepository.save(appointment);
-    }
+		appointment.setClient(client);
+		appointment.setStatus(AppointmentStatus.PENDING);
 
-    public Appointment confirmAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Only PENDING appointment can be confirmed");
-        }
+	public Appointment confirmAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.AWAITING_PAYMENT);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.PENDING) {
+			throw new IllegalStateException("Only PENDING appointment can be confirmed");
+		}
 
-    public Appointment rejectAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.AWAITING_PAYMENT);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Only PENDING appointment can be rejected");
-        }
+	public Appointment rejectAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.REJECTED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.PENDING) {
+			throw new IllegalStateException("Only PENDING appointment can be rejected");
+		}
 
-    public Appointment markAppointmentAsPaid(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.REJECTED);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.AWAITING_PAYMENT) {
-            throw new IllegalStateException("Only AWAITING_PAYMENT appointment can be marked as paid");
-        }
+	public Appointment markAppointmentAsPaid(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.CONFIRMED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.AWAITING_PAYMENT) {
+			throw new IllegalStateException("Only AWAITING_PAYMENT appointment can be marked as paid");
+		}
 
-    public Appointment completeAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.CONFIRMED);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
-            throw new IllegalStateException("Only CONFIRMED appointment can be completed");
-        }
+	public Appointment completeAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.COMPLETED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+			throw new IllegalStateException("Only CONFIRMED appointment can be completed");
+		}
 
-    private Appointment findAppointmentByIdOrThrow(Long id) {
-        return appointmentRepository.findById(id)
-                .orElseThrow(() -> new AppointmentNotFoundException(id));
-    }
+		appointment.setStatus(AppointmentStatus.COMPLETED);
+		return appointmentRepository.save(appointment);
+	}
 
-    private Activity resolveActivity(Appointment appointment) {
-        if (appointment.getActivity() == null || appointment.getActivity().getId() == null) {
-            throw new IllegalArgumentException("Activity id must not be null");
-        }
+	private Appointment findAppointmentByIdOrThrow(Long id) {
+		return appointmentRepository.findById(id)
+				.orElseThrow(() -> new AppointmentNotFoundException(id));
+	}
 
-        return activityRepository.findById(appointment.getActivity().getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Activity with id " + appointment.getActivity().getId() + " not found"
-                ));
-    }
+	private Activity resolveActivity(Appointment appointment) {
+		if (appointment.getActivity() == null || appointment.getActivity().getId() == null) {
+			throw new IllegalArgumentException("Activity id must not be null");
+		}
 
-    private User findUserByIdOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException(id));
-    }
+		return activityRepository.findById(appointment.getActivity().getId())
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Activity with id " + appointment.getActivity().getId() + " not found"
+						));
+	}
 
-    private void validateAppointmentTime(LocalDateTime startTime, LocalDateTime endTime) {
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("Start time and end time must not be null");
-        }
+	private User findUserByIdOrThrow(Long id) {
+		return userRepository.findById(id)
+				.orElseThrow(() -> new UserNotFoundException(id));
+	}
 
-        if (!endTime.isAfter(startTime)) {
-            throw new IllegalArgumentException("End time must be after start time");
-        }
-    }
+	private void validateAppointmentTime(LocalDateTime startTime, LocalDateTime endTime) {
+		if (startTime == null || endTime == null) {
+			throw new IllegalArgumentException("Start time and end time must not be null");
+		}
 
-    private void validateProviderRole(User provider) {
-        if (provider.getRole() != UserRole.PROVIDER) {
-            throw new IllegalArgumentException("Activity owner must have PROVIDER role");
-        }
-    }
+		if (!endTime.isAfter(startTime)) {
+			throw new IllegalArgumentException("End time must be after start time");
+		}
+	}
 
-    private void validateClientRole(User client) {
-        if (client.getRole() != UserRole.CLIENT) {
-            throw new IllegalArgumentException("Only CLIENT can reserve appointment");
-        }
-    }
+	private void validateProviderRole(User provider) {
+		if (provider.getRole() != UserRole.PROVIDER) {
+			throw new IllegalArgumentException("Activity owner must have PROVIDER role");
+		}
+	}
 
-    private void validateClientIsNotProvider(User client, User provider) {
-        if (client.getId().equals(provider.getId())) {
-            throw new IllegalArgumentException("Provider cannot reserve own appointment");
-        }
-    }
+	private void validateClientRole(User client) {
+		if (client.getRole() != UserRole.CLIENT) {
+			throw new IllegalArgumentException("Only CLIENT can reserve appointment");
+		}
+	}
 
-    private void validateActivityIsActive(Activity activity) {
-        if (activity.getStatus() != ActivityStatus.ACTIVE) {
-            throw new IllegalStateException("Appointments can be created only for ACTIVE activities");
-        }
-    }
+	private void validateClientIsNotProvider(User client, User provider) {
+		if (client.getId().equals(provider.getId())) {
+			throw new IllegalArgumentException("Provider cannot reserve own appointment");
+		}
+	}
 
-    private void validateNoTimeOverlapForCreate(Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
-        if (appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
-                activityId, endTime, startTime)) {
-            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
-        }
-    }
+	private void validateActivityIsActive(Activity activity) {
+		if (activity.getStatus() != ActivityStatus.ACTIVE) {
+			throw new IllegalStateException("Appointments can be created only for ACTIVE activities");
+		}
+	}
 
-    private void validateNoTimeOverlapForUpdate(Long activityId,
-                                                Long appointmentId,
-                                                LocalDateTime startTime,
-                                                LocalDateTime endTime) {
-        if (appointmentRepository.existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
-                activityId, appointmentId, endTime, startTime)) {
-            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
-        }
-    }
+	private void validateNoTimeOverlapForCreate(Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
+		if (appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId, endTime, startTime)) {
+			throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+		}
+	}
+
+	private void validateNoTimeOverlapForUpdate(Long activityId,
+			Long appointmentId,
+			LocalDateTime startTime,
+			LocalDateTime endTime) {
+		if (appointmentRepository.existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId, appointmentId, endTime, startTime)) {
+			throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+		}
+	}
 }

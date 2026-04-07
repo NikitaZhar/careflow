@@ -18,6 +18,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     boolean existsByActivityId(Long activityId);
 
     boolean existsByClientId(Long clientId);
+    
+    List<Appointment> findByActivityIdAndStatusOrderByStartTimeAsc(Long activityId, AppointmentStatus status);
 
     boolean existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
             Long activityId,
