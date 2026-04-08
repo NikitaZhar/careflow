@@ -129,15 +129,134 @@ WHERE NOT EXISTS (
 </head>
 <body>
 
-<h2>Provider Page</h2>
-
-<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
-<p>Role: <span th:text="${currentUser.role}"></span></p>
-<p>Email: <span th:text="${currentUser.email}"></span></p>
-
-<div style="margin-top: 20px;">
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
     <a th:href="@{/auth/logout}">Logout</a>
 </div>
+
+<h2 id="pageTitle">Мои активности</h2>
+
+<button id="addButton" type="button" onclick="showActivityForm()">
+    Добавить услугу
+</button>
+
+<div id="activityForm" style="display: none; margin-top: 20px;">
+    <h3>Создать услугу</h3>
+
+    <form th:action="@{/provider/activities}" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="title">Название:</label>
+            <input id="title"
+                   type="text"
+                   name="title"
+                   placeholder="Введите название услуги"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="description">Описание:</label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      cols="50"
+                      placeholder="Опишите услугу"
+                      required></textarea>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="price">Цена:</label>
+            <input id="price"
+                   type="number"
+                   name="price"
+                   step="0.01"
+                   min="0.01"
+                   placeholder="Например: 1000"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="durationMinutes">Длительность (мин):</label>
+            <input id="durationMinutes"
+                   type="number"
+                   name="durationMinutes"
+                   min="1"
+                   placeholder="Например: 60"
+                   required>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <p><strong>Необязательные материалы:</strong></p>
+
+            <div style="margin-top: 10px;">
+                <label for="document">Загрузить текстовый или PDF файл:</label>
+                <input id="document"
+                       type="file"
+                       name="document"
+                       accept=".txt,.pdf">
+            </div>
+
+            <div style="margin-top: 10px;">
+                <label for="video">Загрузить видео файл:</label>
+                <input id="video"
+                       type="file"
+                       name="video"
+                       accept="video/*">
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Создать услугу</button>
+        </div>
+    </form>
+</div>
+
+<div th:if="${#lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <p>Список активностей пуст</p>
+</div>
+
+<table th:if="${not #lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Услуга</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="activity, stat : ${activities}" style="vertical-align: top;">
+            <td th:text="${stat.index + 1}"></td>
+            <td>
+    		<a th:href="@{/provider/activities/{id}(id=${activity.id})}"
+       			style="display: inline-block;
+             	max-width: 60ch;
+              	text-decoration: none;
+              	color: inherit;
+              	word-break: break-word;">
+
+        	<span>
+            	<span th:text="${activity.title}"></span>
+            	<span> </span>
+            	<span th:text="${activity.description}"></span>
+        	</span>
+		    </a>
+			</td>
+		</tr>
+    </tbody>
+</table>
+
+<script>
+    function showActivityForm() {
+        document.getElementById('activityForm').style.display = 'block';
+        document.getElementById('addButton').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>
@@ -150,7 +269,7 @@ WHERE NOT EXISTS (
 </head>
 <body>
 
-<h2>Admin Login</h2>
+<h2>Login page</h2>
 
 <form th:action="@{/auth/login}" method="post">
     <div>
@@ -239,6 +358,241 @@ WHERE NOT EXISTS (
 
 <h2>Ошибка</h2>
 <p th:text="${error}"></p>
+
+</body>
+</html>
+===== ./target/classes/templates/provider-activity-edit.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование услуги</title>
+</head>
+<body>
+
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+<h2>Редактирование услуги</h2>
+
+<form id="activityForm"
+      th:action="@{/provider/activities/{id}(id=${activity.id})}"
+      method="post"
+      enctype="multipart/form-data">
+
+    <div>
+        <label for="title">Название:</label>
+        <input id="title"
+               type="text"
+               name="title"
+               th:value="${activity.title}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="description">Описание:</label>
+        <textarea id="description"
+                  name="description"
+                  rows="4"
+                  cols="50"
+                  required
+                  th:text="${activity.description}"></textarea>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="price">Цена:</label>
+        <input id="price"
+               type="number"
+               name="price"
+               step="0.01"
+               min="0.01"
+               th:value="${activity.price}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="durationMinutes">Длительность (мин):</label>
+        <input id="durationMinutes"
+               type="number"
+               name="durationMinutes"
+               min="1"
+               th:value="${activity.durationMinutes}"
+               required>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <p><strong>Необязательные материалы:</strong></p>
+
+        <div style="margin-top: 10px;">
+            <label for="document">Загрузить текстовый или PDF файл:</label>
+            <input id="document" type="file" name="document" accept=".txt,.pdf">
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="video">Загрузить видео файл:</label>
+            <input id="video" type="file" name="video" accept="video/*">
+        </div>
+    </div>
+
+    <h3 style="margin-top: 30px;">Доступные термины</h3>
+
+    <table id="appointmentsTable" style="margin-top: 10px;">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Начало</th>
+                <th>Конец</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="appointment : ${availableAppointments}"
+                th:attr="data-existing-id=${appointment.id}">
+                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
+                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
+                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
+                <td>
+                    <button type="button"
+                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
+                        Удалить
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <label for="newAppointmentDate">Дата:</label>
+        <input id="newAppointmentDate" type="date">
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Время начала:</label>
+
+        <select id="newAppointmentHour">
+            <option value="">Час</option>
+            <option th:each="h : ${#numbers.sequence(0,23)}"
+                    th:value="${h < 10 ? '0' + h : h}"
+                    th:text="${h < 10 ? '0' + h : h}">
+            </option>
+        </select>
+
+        <span>:</span>
+
+        <select id="newAppointmentMinute">
+            <option value="">Мин</option>
+            <option value="00">00</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+        </select>
+
+        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
+            Добавить
+        </button>
+    </div>
+
+    <div id="hiddenAppointments"></div>
+</form>
+
+<div style="margin-top: 30px;">
+    <button type="submit" form="activityForm">Сохранить</button>
+
+    <button type="button"
+            onclick="window.location.href='/provider'"
+            style="margin-left: 10px;">
+        Отменить
+    </button>
+
+    <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
+          method="post"
+          style="display: inline; margin-left: 10px;"
+          onsubmit="return confirm('Удалить услугу?');">
+        <button type="submit">Удалить</button>
+    </form>
+</div>
+
+<script>
+    function addHiddenInput(name, value, group) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        input.dataset.group = group;
+        document.getElementById('hiddenAppointments').appendChild(input);
+    }
+
+    function removeHiddenGroup(group) {
+        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
+    }
+
+    function addDraftAppointment() {
+        const date = document.getElementById('newAppointmentDate').value;
+        const hour = document.getElementById('newAppointmentHour').value;
+        const minute = document.getElementById('newAppointmentMinute').value;
+        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+
+        if (!date || !hour || !minute || !duration) {
+            return;
+        }
+
+        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
+        const end = new Date(start.getTime() + duration * 60000);
+
+        const group = 'new-' + Date.now();
+
+        addHiddenInput('newAppointmentDates', date, group);
+        addHiddenInput('newAppointmentHours', hour, group);
+        addHiddenInput('newAppointmentMinutes', minute, group);
+
+        const row = document.createElement('tr');
+        row.dataset.group = group;
+
+        const formattedDate = start.toLocaleDateString('ru-RU');
+        const startText = hour + ':' + minute;
+        const endHour = String(end.getHours()).padStart(2, '0');
+        const endMinute = String(end.getMinutes()).padStart(2, '0');
+        const endText = endHour + ':' + endMinute;
+
+        row.innerHTML =
+            '<td>' + formattedDate + '</td>' +
+            '<td>' + startText + '</td>' +
+            '<td>' + endText + '</td>' +
+            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+
+        document.querySelector('#appointmentsTable tbody').appendChild(row);
+
+        document.getElementById('newAppointmentDate').value = '';
+        document.getElementById('newAppointmentHour').value = '';
+        document.getElementById('newAppointmentMinute').value = '';
+    }
+
+    function removeDraftAppointment(button, group) {
+        button.closest('tr').remove();
+        removeHiddenGroup(group);
+    }
+
+    function removeExistingAppointment(button, appointmentId) {
+        const group = 'delete-' + appointmentId;
+
+        if (document.querySelector('[data-group="' + group + '"]')) {
+            return;
+        }
+
+        addHiddenInput('appointmentsToDelete', appointmentId, group);
+        button.closest('tr').remove();
+    }
+</script>
 
 </body>
 </html>
@@ -430,15 +784,134 @@ WHERE NOT EXISTS (
 </head>
 <body>
 
-<h2>Provider Page</h2>
-
-<p>Добро пожаловать, <span th:text="${currentUser.username}"></span>!</p>
-<p>Role: <span th:text="${currentUser.role}"></span></p>
-<p>Email: <span th:text="${currentUser.email}"></span></p>
-
-<div style="margin-top: 20px;">
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
     <a th:href="@{/auth/logout}">Logout</a>
 </div>
+
+<h2 id="pageTitle">Мои активности</h2>
+
+<button id="addButton" type="button" onclick="showActivityForm()">
+    Добавить услугу
+</button>
+
+<div id="activityForm" style="display: none; margin-top: 20px;">
+    <h3>Создать услугу</h3>
+
+    <form th:action="@{/provider/activities}" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="title">Название:</label>
+            <input id="title"
+                   type="text"
+                   name="title"
+                   placeholder="Введите название услуги"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="description">Описание:</label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      cols="50"
+                      placeholder="Опишите услугу"
+                      required></textarea>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="price">Цена:</label>
+            <input id="price"
+                   type="number"
+                   name="price"
+                   step="0.01"
+                   min="0.01"
+                   placeholder="Например: 1000"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="durationMinutes">Длительность (мин):</label>
+            <input id="durationMinutes"
+                   type="number"
+                   name="durationMinutes"
+                   min="1"
+                   placeholder="Например: 60"
+                   required>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <p><strong>Необязательные материалы:</strong></p>
+
+            <div style="margin-top: 10px;">
+                <label for="document">Загрузить текстовый или PDF файл:</label>
+                <input id="document"
+                       type="file"
+                       name="document"
+                       accept=".txt,.pdf">
+            </div>
+
+            <div style="margin-top: 10px;">
+                <label for="video">Загрузить видео файл:</label>
+                <input id="video"
+                       type="file"
+                       name="video"
+                       accept="video/*">
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Создать услугу</button>
+        </div>
+    </form>
+</div>
+
+<div th:if="${#lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <p>Список активностей пуст</p>
+</div>
+
+<table th:if="${not #lists.isEmpty(activities)}" style="margin-top: 20px;">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Услуга</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="activity, stat : ${activities}" style="vertical-align: top;">
+            <td th:text="${stat.index + 1}"></td>
+            <td>
+    		<a th:href="@{/provider/activities/{id}(id=${activity.id})}"
+       			style="display: inline-block;
+             	max-width: 60ch;
+              	text-decoration: none;
+              	color: inherit;
+              	word-break: break-word;">
+
+        	<span>
+            	<span th:text="${activity.title}"></span>
+            	<span> </span>
+            	<span th:text="${activity.description}"></span>
+        	</span>
+		    </a>
+			</td>
+		</tr>
+    </tbody>
+</table>
+
+<script>
+    function showActivityForm() {
+        document.getElementById('activityForm').style.display = 'block';
+        document.getElementById('addButton').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>
@@ -451,7 +924,7 @@ WHERE NOT EXISTS (
 </head>
 <body>
 
-<h2>Admin Login</h2>
+<h2>Login page</h2>
 
 <form th:action="@{/auth/login}" method="post">
     <div>
@@ -543,6 +1016,241 @@ WHERE NOT EXISTS (
 
 </body>
 </html>
+===== ./src/main/resources/templates/provider-activity-edit.html =====
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование услуги</title>
+</head>
+<body>
+
+<div style="margin-bottom: 20px;">
+    <p>
+        Вы вошли как:
+        <strong th:text="${currentUser.username}"></strong>
+        (<span th:text="${currentUser.role}"></span>)
+    </p>
+    <p>
+        Email:
+        <span th:text="${currentUser.email}"></span>
+    </p>
+    <a th:href="@{/auth/logout}">Logout</a>
+</div>
+
+<h2>Редактирование услуги</h2>
+
+<form id="activityForm"
+      th:action="@{/provider/activities/{id}(id=${activity.id})}"
+      method="post"
+      enctype="multipart/form-data">
+
+    <div>
+        <label for="title">Название:</label>
+        <input id="title"
+               type="text"
+               name="title"
+               th:value="${activity.title}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="description">Описание:</label>
+        <textarea id="description"
+                  name="description"
+                  rows="4"
+                  cols="50"
+                  required
+                  th:text="${activity.description}"></textarea>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="price">Цена:</label>
+        <input id="price"
+               type="number"
+               name="price"
+               step="0.01"
+               min="0.01"
+               th:value="${activity.price}"
+               required>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label for="durationMinutes">Длительность (мин):</label>
+        <input id="durationMinutes"
+               type="number"
+               name="durationMinutes"
+               min="1"
+               th:value="${activity.durationMinutes}"
+               required>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <p><strong>Необязательные материалы:</strong></p>
+
+        <div style="margin-top: 10px;">
+            <label for="document">Загрузить текстовый или PDF файл:</label>
+            <input id="document" type="file" name="document" accept=".txt,.pdf">
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="video">Загрузить видео файл:</label>
+            <input id="video" type="file" name="video" accept="video/*">
+        </div>
+    </div>
+
+    <h3 style="margin-top: 30px;">Доступные термины</h3>
+
+    <table id="appointmentsTable" style="margin-top: 10px;">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Начало</th>
+                <th>Конец</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="appointment : ${availableAppointments}"
+                th:attr="data-existing-id=${appointment.id}">
+                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
+                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
+                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
+                <td>
+                    <button type="button"
+                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
+                        Удалить
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <label for="newAppointmentDate">Дата:</label>
+        <input id="newAppointmentDate" type="date">
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label>Время начала:</label>
+
+        <select id="newAppointmentHour">
+            <option value="">Час</option>
+            <option th:each="h : ${#numbers.sequence(0,23)}"
+                    th:value="${h < 10 ? '0' + h : h}"
+                    th:text="${h < 10 ? '0' + h : h}">
+            </option>
+        </select>
+
+        <span>:</span>
+
+        <select id="newAppointmentMinute">
+            <option value="">Мин</option>
+            <option value="00">00</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+        </select>
+
+        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
+            Добавить
+        </button>
+    </div>
+
+    <div id="hiddenAppointments"></div>
+</form>
+
+<div style="margin-top: 30px;">
+    <button type="submit" form="activityForm">Сохранить</button>
+
+    <button type="button"
+            onclick="window.location.href='/provider'"
+            style="margin-left: 10px;">
+        Отменить
+    </button>
+
+    <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
+          method="post"
+          style="display: inline; margin-left: 10px;"
+          onsubmit="return confirm('Удалить услугу?');">
+        <button type="submit">Удалить</button>
+    </form>
+</div>
+
+<script>
+    function addHiddenInput(name, value, group) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        input.dataset.group = group;
+        document.getElementById('hiddenAppointments').appendChild(input);
+    }
+
+    function removeHiddenGroup(group) {
+        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
+    }
+
+    function addDraftAppointment() {
+        const date = document.getElementById('newAppointmentDate').value;
+        const hour = document.getElementById('newAppointmentHour').value;
+        const minute = document.getElementById('newAppointmentMinute').value;
+        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+
+        if (!date || !hour || !minute || !duration) {
+            return;
+        }
+
+        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
+        const end = new Date(start.getTime() + duration * 60000);
+
+        const group = 'new-' + Date.now();
+
+        addHiddenInput('newAppointmentDates', date, group);
+        addHiddenInput('newAppointmentHours', hour, group);
+        addHiddenInput('newAppointmentMinutes', minute, group);
+
+        const row = document.createElement('tr');
+        row.dataset.group = group;
+
+        const formattedDate = start.toLocaleDateString('ru-RU');
+        const startText = hour + ':' + minute;
+        const endHour = String(end.getHours()).padStart(2, '0');
+        const endMinute = String(end.getMinutes()).padStart(2, '0');
+        const endText = endHour + ':' + endMinute;
+
+        row.innerHTML =
+            '<td>' + formattedDate + '</td>' +
+            '<td>' + startText + '</td>' +
+            '<td>' + endText + '</td>' +
+            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+
+        document.querySelector('#appointmentsTable tbody').appendChild(row);
+
+        document.getElementById('newAppointmentDate').value = '';
+        document.getElementById('newAppointmentHour').value = '';
+        document.getElementById('newAppointmentMinute').value = '';
+    }
+
+    function removeDraftAppointment(button, group) {
+        button.closest('tr').remove();
+        removeHiddenGroup(group);
+    }
+
+    function removeExistingAppointment(button, appointmentId) {
+        const group = 'delete-' + appointmentId;
+
+        if (document.querySelector('[data-group="' + group + '"]')) {
+            return;
+        }
+
+        addHiddenInput('appointmentsToDelete', appointmentId, group);
+        button.closest('tr').remove();
+    }
+</script>
+
+</body>
+</html>
 ===== ./src/main/java/com/careflow/repository/AppointmentRepository.java =====
 package com.careflow.repository;
 
@@ -564,6 +1272,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     boolean existsByActivityId(Long activityId);
 
     boolean existsByClientId(Long clientId);
+    
+    List<Appointment> findByActivityIdAndStatusOrderByStartTimeAsc(Long activityId, AppointmentStatus status);
 
     boolean existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
             Long activityId,
@@ -593,11 +1303,15 @@ public interface ProviderInvitationRepository extends JpaRepository<ProviderInvi
 package com.careflow.repository;
 
 import com.careflow.model.Activity;
+
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
     boolean existsByProviderId(Long providerId);
+    List<Activity> findByProviderId(Long providerId);
 }
 ===== ./src/main/java/com/careflow/repository/UserRepository.java =====
 package com.careflow.repository;
@@ -702,6 +1416,178 @@ public class ClientController {
 
         model.addAttribute("currentUser", user);
         return "client";
+    }
+}
+===== ./src/main/java/com/careflow/controller/ProviderActivityController.java =====
+package com.careflow.controller;
+
+import com.careflow.controller.auth.SessionUserValidator;
+import com.careflow.model.Activity;
+import com.careflow.model.Appointment;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.service.ActivityService;
+import com.careflow.service.AppointmentService;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+
+@Controller
+public class ProviderActivityController {
+
+    private final SessionUserValidator sessionValidator;
+    private final ActivityService activityService;
+    private final AppointmentService appointmentService;
+
+    public ProviderActivityController(SessionUserValidator sessionValidator,
+                                      ActivityService activityService,
+                                      AppointmentService appointmentService) {
+        this.sessionValidator = sessionValidator;
+        this.activityService = activityService;
+        this.appointmentService = appointmentService;
+    }
+
+    @PostMapping("/provider/activities")
+    public String createActivity(@RequestParam String title,
+                                 @RequestParam String description,
+                                 @RequestParam BigDecimal price,
+                                 @RequestParam Integer durationMinutes,
+                                 HttpSession session) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = new Activity();
+        activity.setProvider(user);
+        activity.setTitle(title);
+        activity.setDescription(description);
+        activity.setPrice(price);
+        activity.setDurationMinutes(durationMinutes);
+
+        activityService.saveActivity(activity);
+        return "redirect:/provider";
+    }
+
+    @GetMapping("/provider/activities/{id}")
+    public String showEditActivityPage(@PathVariable Long id,
+                                       HttpSession session,
+                                       Model model) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = activityService.findActivityById(id);
+        if (!activity.getProvider().getId().equals(user.getId())) {
+            return "redirect:/provider";
+        }
+
+        model.addAttribute("currentUser", user);
+        model.addAttribute("activity", activity);
+        model.addAttribute("availableAppointments",
+                appointmentService.findAvailableAppointmentsByActivityId(activity.getId()));
+
+        return "provider-activity-edit";
+    }
+
+    @PostMapping("/provider/activities/{id}")
+    public String updateActivity(@PathVariable Long id,
+                                 @RequestParam String title,
+                                 @RequestParam String description,
+                                 @RequestParam BigDecimal price,
+                                 @RequestParam Integer durationMinutes,
+                                 @RequestParam(required = false) List<String> newAppointmentDates,
+                                 @RequestParam(required = false) List<String> newAppointmentHours,
+                                 @RequestParam(required = false) List<String> newAppointmentMinutes,
+                                 @RequestParam(required = false) List<Long> appointmentsToDelete,
+                                 HttpSession session) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = activityService.findActivityById(id);
+        if (!activity.getProvider().getId().equals(user.getId())) {
+            return "redirect:/provider";
+        }
+
+        activity.setTitle(title);
+        activity.setDescription(description);
+        activity.setPrice(price);
+        activity.setDurationMinutes(durationMinutes);
+        activityService.saveActivity(activity);
+
+        if (appointmentsToDelete != null) {
+            for (Long appointmentId : appointmentsToDelete) {
+                Appointment appointment = appointmentService.findAppointmentById(appointmentId);
+
+                if (appointment.getActivity().getId().equals(activity.getId())) {
+                    appointmentService.deleteAppointmentById(appointmentId);
+                }
+            }
+        }
+
+        if (newAppointmentDates != null && newAppointmentHours != null && newAppointmentMinutes != null) {
+            for (int i = 0; i < newAppointmentDates.size(); i++) {
+                LocalDate date = LocalDate.parse(newAppointmentDates.get(i));
+                LocalTime time = LocalTime.parse(newAppointmentHours.get(i) + ":" + newAppointmentMinutes.get(i));
+                LocalDateTime startTime = LocalDateTime.of(date, time);
+
+                if (startTime.isBefore(LocalDateTime.now())) {
+                    continue;
+                }
+
+                LocalDateTime endTime = startTime.plusMinutes(activity.getDurationMinutes());
+
+                boolean exists = appointmentService.existsOverlappingAppointment(
+                        activity.getId(),
+                        startTime,
+                        endTime
+                );
+
+                if (exists) {
+                    continue;
+                }
+
+                Appointment appointment = new Appointment();
+                appointment.setActivity(activity);
+                appointment.setStartTime(startTime);
+                appointment.setEndTime(endTime);
+
+                appointmentService.saveAppointment(appointment);
+            }
+        }
+
+        return "redirect:/provider";
+    }
+
+    @PostMapping("/provider/activities/{id}/delete")
+    public String deleteActivity(@PathVariable Long id,
+                                 HttpSession session) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = activityService.findActivityById(id);
+        if (!activity.getProvider().getId().equals(user.getId())) {
+            return "redirect:/provider";
+        }
+
+        activityService.deleteActivityById(id);
+        return "redirect:/provider";
     }
 }
 ===== ./src/main/java/com/careflow/controller/auth/SessionUserValidator.java =====
@@ -959,6 +1845,96 @@ public class ActivityController {
         return ResponseEntity.noContent().build();
     }
 }
+===== ./src/main/java/com/careflow/controller/ProviderAppointmentController.java =====
+package com.careflow.controller;
+
+import com.careflow.controller.auth.SessionUserValidator;
+import com.careflow.model.Activity;
+import com.careflow.model.Appointment;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.service.ActivityService;
+import com.careflow.service.AppointmentService;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+@Controller
+public class ProviderAppointmentController {
+
+    private final SessionUserValidator sessionValidator;
+    private final ActivityService activityService;
+    private final AppointmentService appointmentService;
+
+    public ProviderAppointmentController(SessionUserValidator sessionValidator,
+                                         ActivityService activityService,
+                                         AppointmentService appointmentService) {
+        this.sessionValidator = sessionValidator;
+        this.activityService = activityService;
+        this.appointmentService = appointmentService;
+    }
+
+    @PostMapping("/provider/activities/{id}/appointments")
+    public String createAvailableAppointment(@PathVariable Long id,
+                                             @RequestParam LocalDate date,
+                                             @RequestParam String hour,
+                                             @RequestParam String minute,
+                                             HttpSession session) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = activityService.findActivityById(id);
+        if (!activity.getProvider().getId().equals(user.getId())) {
+            return "redirect:/provider";
+        }
+
+        LocalTime time = LocalTime.parse(hour + ":" + minute);
+        LocalDateTime startTime = LocalDateTime.of(date, time);
+        LocalDateTime endTime = startTime.plusMinutes(activity.getDurationMinutes());
+
+        Appointment appointment = new Appointment();
+        appointment.setActivity(activity);
+        appointment.setStartTime(startTime);
+        appointment.setEndTime(endTime);
+
+        appointmentService.saveAppointment(appointment);
+
+        return "redirect:/provider/activities/" + id;
+    }
+
+    @PostMapping("/provider/activities/{activityId}/appointments/{appointmentId}/delete")
+    public String deleteAvailableAppointment(@PathVariable Long activityId,
+                                             @PathVariable Long appointmentId,
+                                             HttpSession session) {
+
+        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
+
+        Activity activity = activityService.findActivityById(activityId);
+        if (!activity.getProvider().getId().equals(user.getId())) {
+            return "redirect:/provider";
+        }
+
+        Appointment appointment = appointmentService.findAppointmentById(appointmentId);
+        if (!appointment.getActivity().getId().equals(activity.getId())) {
+            return "redirect:/provider/activities/" + activityId;
+        }
+
+        appointmentService.deleteAppointmentById(appointmentId);
+        return "redirect:/provider/activities/" + activityId;
+    }
+}
 ===== ./src/main/java/com/careflow/controller/ProviderRegistrationController.java =====
 package com.careflow.controller;
 
@@ -1025,6 +2001,7 @@ package com.careflow.controller;
 import com.careflow.controller.auth.SessionUserValidator;
 import com.careflow.model.User;
 import com.careflow.model.UserRole;
+import com.careflow.service.ActivityService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -1034,17 +2011,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class ProviderController {
 
     private final SessionUserValidator sessionValidator;
+    private final ActivityService activityService;
 
-    public ProviderController(SessionUserValidator sessionValidator) {
+    public ProviderController(SessionUserValidator sessionValidator,
+                              ActivityService activityService) {
         this.sessionValidator = sessionValidator;
+        this.activityService = activityService;
     }
 
     @GetMapping("/provider")
     public String showProviderPage(HttpSession session, Model model) {
         User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) return "redirect:/auth/login";
+        if (user == null) {
+            return "redirect:/auth/login";
+        }
 
         model.addAttribute("currentUser", user);
+        model.addAttribute("activities", activityService.findActivitiesByProviderId(user.getId()));
         return "provider";
     }
 }
@@ -1690,221 +2673,234 @@ import java.util.List;
 @Service
 public class AppointmentService {
 
-    private final AppointmentRepository appointmentRepository;
-    private final ActivityRepository activityRepository;
-    private final UserRepository userRepository;
+	private final AppointmentRepository appointmentRepository;
+	private final ActivityRepository activityRepository;
+	private final UserRepository userRepository;
 
-    public AppointmentService(AppointmentRepository appointmentRepository,
-                              ActivityRepository activityRepository,
-                              UserRepository userRepository) {
-        this.appointmentRepository = appointmentRepository;
-        this.activityRepository = activityRepository;
-        this.userRepository = userRepository;
-    }
+	public AppointmentService(AppointmentRepository appointmentRepository,
+			ActivityRepository activityRepository,
+			UserRepository userRepository) {
+		this.appointmentRepository = appointmentRepository;
+		this.activityRepository = activityRepository;
+		this.userRepository = userRepository;
+	}
 
-    public Appointment saveAppointment(Appointment appointment) {
-        validateAppointmentTime(appointment.getStartTime(), appointment.getEndTime());
+	public Appointment saveAppointment(Appointment appointment) {
+		validateAppointmentTime(appointment.getStartTime(), appointment.getEndTime());
 
-        Activity activity = resolveActivity(appointment);
-        validateActivityIsActive(activity);
-        validateProviderRole(activity.getProvider());
-        validateNoTimeOverlapForCreate(activity.getId(), appointment.getStartTime(), appointment.getEndTime());
+		Activity activity = resolveActivity(appointment);
+		validateActivityIsActive(activity);
+		validateProviderRole(activity.getProvider());
+		validateNoTimeOverlapForCreate(activity.getId(), appointment.getStartTime(), appointment.getEndTime());
 
-        appointment.setActivity(activity);
-        appointment.setClient(null);
-        appointment.setStatus(AppointmentStatus.AVAILABLE);
+		appointment.setActivity(activity);
+		appointment.setClient(null);
+		appointment.setStatus(AppointmentStatus.AVAILABLE);
 
-        return appointmentRepository.save(appointment);
-    }
+		return appointmentRepository.save(appointment);
+	}
 
-    public List<Appointment> findAllAppointments() {
-        return appointmentRepository.findAll();
-    }
+	public List<Appointment> findAllAppointments() {
+		return appointmentRepository.findAll();
+	}
 
-    public Appointment findAppointmentById(Long id) {
-        return findAppointmentByIdOrThrow(id);
-    }
+	public Appointment findAppointmentById(Long id) {
+		return findAppointmentByIdOrThrow(id);
+	}
 
-    public List<Appointment> findAppointmentsByProviderId(Long providerId) {
-        return appointmentRepository.findByActivityProviderId(providerId);
-    }
+	public List<Appointment> findAppointmentsByProviderId(Long providerId) {
+		return appointmentRepository.findByActivityProviderId(providerId);
+	}
 
-    public List<Appointment> findAppointmentsByClientId(Long clientId) {
-        return appointmentRepository.findByClientId(clientId);
-    }
+	public List<Appointment> findAppointmentsByClientId(Long clientId) {
+		return appointmentRepository.findByClientId(clientId);
+	}
 
-    public List<Appointment> findAvailableAppointmentsByActivityId(Long activityId) {
-        return appointmentRepository.findByActivityIdAndStatus(activityId, AppointmentStatus.AVAILABLE);
-    }
+	public List<Appointment> findAvailableAppointmentsByActivityId(Long activityId) {
+		return appointmentRepository.findByActivityIdAndStatusOrderByStartTimeAsc(
+				activityId,
+				AppointmentStatus.AVAILABLE
+				);
+	}
 
-    public Appointment updateAppointment(Long id, Appointment updatedAppointment) {
-        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+	public boolean existsOverlappingAppointment(Long activityId,
+			LocalDateTime startTime,
+			LocalDateTime endTime) {
+		return appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId,
+				endTime,
+				startTime
+				);
+	}
 
-        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be edited");
-        }
+	public Appointment updateAppointment(Long id, Appointment updatedAppointment) {
+		Appointment existingAppointment = findAppointmentByIdOrThrow(id);
 
-        validateAppointmentTime(updatedAppointment.getStartTime(), updatedAppointment.getEndTime());
+		if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be edited");
+		}
 
-        Activity activity = resolveActivity(updatedAppointment);
-        validateActivityIsActive(activity);
-        validateProviderRole(activity.getProvider());
-        validateNoTimeOverlapForUpdate(
-                activity.getId(),
-                existingAppointment.getId(),
-                updatedAppointment.getStartTime(),
-                updatedAppointment.getEndTime()
-        );
+		validateAppointmentTime(updatedAppointment.getStartTime(), updatedAppointment.getEndTime());
 
-        existingAppointment.setActivity(activity);
-        existingAppointment.setStartTime(updatedAppointment.getStartTime());
-        existingAppointment.setEndTime(updatedAppointment.getEndTime());
+		Activity activity = resolveActivity(updatedAppointment);
+		validateActivityIsActive(activity);
+		validateProviderRole(activity.getProvider());
+		validateNoTimeOverlapForUpdate(
+				activity.getId(),
+				existingAppointment.getId(),
+				updatedAppointment.getStartTime(),
+				updatedAppointment.getEndTime()
+				);
 
-        return appointmentRepository.save(existingAppointment);
-    }
+		existingAppointment.setActivity(activity);
+		existingAppointment.setStartTime(updatedAppointment.getStartTime());
+		existingAppointment.setEndTime(updatedAppointment.getEndTime());
 
-    public void deleteAppointmentById(Long id) {
-        Appointment existingAppointment = findAppointmentByIdOrThrow(id);
+		return appointmentRepository.save(existingAppointment);
+	}
 
-        if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be deleted");
-        }
+	public void deleteAppointmentById(Long id) {
+		Appointment existingAppointment = findAppointmentByIdOrThrow(id);
 
-        appointmentRepository.delete(existingAppointment);
-    }
+		if (existingAppointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be deleted");
+		}
 
-    public Appointment reserveAppointment(Long appointmentId, Long clientId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointmentRepository.delete(existingAppointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.AVAILABLE) {
-            throw new IllegalStateException("Only AVAILABLE appointment can be reserved");
-        }
+	public Appointment reserveAppointment(Long appointmentId, Long clientId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        User client = findUserByIdOrThrow(clientId);
-        validateClientRole(client);
-        validateClientIsNotProvider(client, appointment.getActivity().getProvider());
+		if (appointment.getStatus() != AppointmentStatus.AVAILABLE) {
+			throw new IllegalStateException("Only AVAILABLE appointment can be reserved");
+		}
 
-        appointment.setClient(client);
-        appointment.setStatus(AppointmentStatus.PENDING);
+		User client = findUserByIdOrThrow(clientId);
+		validateClientRole(client);
+		validateClientIsNotProvider(client, appointment.getActivity().getProvider());
 
-        return appointmentRepository.save(appointment);
-    }
+		appointment.setClient(client);
+		appointment.setStatus(AppointmentStatus.PENDING);
 
-    public Appointment confirmAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Only PENDING appointment can be confirmed");
-        }
+	public Appointment confirmAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.AWAITING_PAYMENT);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.PENDING) {
+			throw new IllegalStateException("Only PENDING appointment can be confirmed");
+		}
 
-    public Appointment rejectAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.AWAITING_PAYMENT);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Only PENDING appointment can be rejected");
-        }
+	public Appointment rejectAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.REJECTED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.PENDING) {
+			throw new IllegalStateException("Only PENDING appointment can be rejected");
+		}
 
-    public Appointment markAppointmentAsPaid(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.REJECTED);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.AWAITING_PAYMENT) {
-            throw new IllegalStateException("Only AWAITING_PAYMENT appointment can be marked as paid");
-        }
+	public Appointment markAppointmentAsPaid(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.CONFIRMED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.AWAITING_PAYMENT) {
+			throw new IllegalStateException("Only AWAITING_PAYMENT appointment can be marked as paid");
+		}
 
-    public Appointment completeAppointment(Long appointmentId) {
-        Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
+		appointment.setStatus(AppointmentStatus.CONFIRMED);
+		return appointmentRepository.save(appointment);
+	}
 
-        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
-            throw new IllegalStateException("Only CONFIRMED appointment can be completed");
-        }
+	public Appointment completeAppointment(Long appointmentId) {
+		Appointment appointment = findAppointmentByIdOrThrow(appointmentId);
 
-        appointment.setStatus(AppointmentStatus.COMPLETED);
-        return appointmentRepository.save(appointment);
-    }
+		if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+			throw new IllegalStateException("Only CONFIRMED appointment can be completed");
+		}
 
-    private Appointment findAppointmentByIdOrThrow(Long id) {
-        return appointmentRepository.findById(id)
-                .orElseThrow(() -> new AppointmentNotFoundException(id));
-    }
+		appointment.setStatus(AppointmentStatus.COMPLETED);
+		return appointmentRepository.save(appointment);
+	}
 
-    private Activity resolveActivity(Appointment appointment) {
-        if (appointment.getActivity() == null || appointment.getActivity().getId() == null) {
-            throw new IllegalArgumentException("Activity id must not be null");
-        }
+	private Appointment findAppointmentByIdOrThrow(Long id) {
+		return appointmentRepository.findById(id)
+				.orElseThrow(() -> new AppointmentNotFoundException(id));
+	}
 
-        return activityRepository.findById(appointment.getActivity().getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Activity with id " + appointment.getActivity().getId() + " not found"
-                ));
-    }
+	private Activity resolveActivity(Appointment appointment) {
+		if (appointment.getActivity() == null || appointment.getActivity().getId() == null) {
+			throw new IllegalArgumentException("Activity id must not be null");
+		}
 
-    private User findUserByIdOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException(id));
-    }
+		return activityRepository.findById(appointment.getActivity().getId())
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Activity with id " + appointment.getActivity().getId() + " not found"
+						));
+	}
 
-    private void validateAppointmentTime(LocalDateTime startTime, LocalDateTime endTime) {
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("Start time and end time must not be null");
-        }
+	private User findUserByIdOrThrow(Long id) {
+		return userRepository.findById(id)
+				.orElseThrow(() -> new UserNotFoundException(id));
+	}
 
-        if (!endTime.isAfter(startTime)) {
-            throw new IllegalArgumentException("End time must be after start time");
-        }
-    }
+	private void validateAppointmentTime(LocalDateTime startTime, LocalDateTime endTime) {
+		if (startTime == null || endTime == null) {
+			throw new IllegalArgumentException("Start time and end time must not be null");
+		}
 
-    private void validateProviderRole(User provider) {
-        if (provider.getRole() != UserRole.PROVIDER) {
-            throw new IllegalArgumentException("Activity owner must have PROVIDER role");
-        }
-    }
+		if (!endTime.isAfter(startTime)) {
+			throw new IllegalArgumentException("End time must be after start time");
+		}
+	}
 
-    private void validateClientRole(User client) {
-        if (client.getRole() != UserRole.CLIENT) {
-            throw new IllegalArgumentException("Only CLIENT can reserve appointment");
-        }
-    }
+	private void validateProviderRole(User provider) {
+		if (provider.getRole() != UserRole.PROVIDER) {
+			throw new IllegalArgumentException("Activity owner must have PROVIDER role");
+		}
+	}
 
-    private void validateClientIsNotProvider(User client, User provider) {
-        if (client.getId().equals(provider.getId())) {
-            throw new IllegalArgumentException("Provider cannot reserve own appointment");
-        }
-    }
+	private void validateClientRole(User client) {
+		if (client.getRole() != UserRole.CLIENT) {
+			throw new IllegalArgumentException("Only CLIENT can reserve appointment");
+		}
+	}
 
-    private void validateActivityIsActive(Activity activity) {
-        if (activity.getStatus() != ActivityStatus.ACTIVE) {
-            throw new IllegalStateException("Appointments can be created only for ACTIVE activities");
-        }
-    }
+	private void validateClientIsNotProvider(User client, User provider) {
+		if (client.getId().equals(provider.getId())) {
+			throw new IllegalArgumentException("Provider cannot reserve own appointment");
+		}
+	}
 
-    private void validateNoTimeOverlapForCreate(Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
-        if (appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
-                activityId, endTime, startTime)) {
-            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
-        }
-    }
+	private void validateActivityIsActive(Activity activity) {
+		if (activity.getStatus() != ActivityStatus.ACTIVE) {
+			throw new IllegalStateException("Appointments can be created only for ACTIVE activities");
+		}
+	}
 
-    private void validateNoTimeOverlapForUpdate(Long activityId,
-                                                Long appointmentId,
-                                                LocalDateTime startTime,
-                                                LocalDateTime endTime) {
-        if (appointmentRepository.existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
-                activityId, appointmentId, endTime, startTime)) {
-            throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
-        }
-    }
+	private void validateNoTimeOverlapForCreate(Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
+		if (appointmentRepository.existsByActivityIdAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId, endTime, startTime)) {
+			throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+		}
+	}
+
+	private void validateNoTimeOverlapForUpdate(Long activityId,
+			Long appointmentId,
+			LocalDateTime startTime,
+			LocalDateTime endTime) {
+		if (appointmentRepository.existsByActivityIdAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+				activityId, appointmentId, endTime, startTime)) {
+			throw new IllegalArgumentException("Appointment time overlaps with an existing appointment");
+		}
+	}
 }
 ===== ./src/main/java/com/careflow/service/AuthService.java =====
 package com.careflow.service;
@@ -1985,6 +2981,10 @@ public class ActivityService {
 
     public List<Activity> findAllActivities() {
         return activityRepository.findAll();
+    }
+    
+    public List<Activity> findActivitiesByProviderId(Long providerId) {
+        return activityRepository.findByProviderId(providerId);
     }
 
     public Activity findActivityById(Long id) {

@@ -23,8 +23,7 @@
 
 <form id="activityForm"
       th:action="@{/provider/activities/{id}(id=${activity.id})}"
-      method="post"
-      enctype="multipart/form-data">
+      method="post">
 
     <div>
         <label for="title">Название:</label>
@@ -65,89 +64,15 @@
                th:value="${activity.durationMinutes}"
                required>
     </div>
-
-    <div style="margin-top: 20px;">
-        <p><strong>Необязательные материалы:</strong></p>
-
-        <div style="margin-top: 10px;">
-            <label for="document">Загрузить текстовый или PDF файл:</label>
-            <input id="document" type="file" name="document" accept=".txt,.pdf">
-        </div>
-
-        <div style="margin-top: 10px;">
-            <label for="video">Загрузить видео файл:</label>
-            <input id="video" type="file" name="video" accept="video/*">
-        </div>
-    </div>
-
-    <h3 style="margin-top: 30px;">Доступные термины</h3>
-
-    <table id="appointmentsTable" style="margin-top: 10px;">
-        <thead>
-            <tr>
-                <th>Дата</th>
-                <th>Начало</th>
-                <th>Конец</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="appointment : ${availableAppointments}"
-                th:attr="data-existing-id=${appointment.id}">
-                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
-                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
-                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
-                <td>
-                    <button type="button"
-                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div style="margin-top: 20px;">
-        <label for="newAppointmentDate">Дата:</label>
-        <input id="newAppointmentDate" type="date">
-    </div>
-
-    <div style="margin-top: 10px;">
-        <label>Время начала:</label>
-
-        <select id="newAppointmentHour">
-            <option value="">Час</option>
-            <option th:each="h : ${#numbers.sequence(0,23)}"
-                    th:value="${h < 10 ? '0' + h : h}"
-                    th:text="${h < 10 ? '0' + h : h}">
-            </option>
-        </select>
-
-        <span>:</span>
-
-        <select id="newAppointmentMinute">
-            <option value="">Мин</option>
-            <option value="00">00</option>
-            <option value="15">15</option>
-            <option value="30">30</option>
-            <option value="45">45</option>
-        </select>
-
-        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
-            Добавить
-        </button>
-    </div>
-
-    <div id="hiddenAppointments"></div>
 </form>
 
-<div style="margin-top: 30px;">
+<div style="margin-top: 20px;">
     <button type="submit" form="activityForm">Сохранить</button>
 
     <button type="button"
             onclick="window.location.href='/provider'"
             style="margin-left: 10px;">
-        Отменить
+        Назад
     </button>
 
     <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
@@ -158,77 +83,169 @@
     </form>
 </div>
 
-<script>
-    function addHiddenInput(name, value, group) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        input.dataset.group = group;
-        document.getElementById('hiddenAppointments').appendChild(input);
-    }
+<hr style="margin: 30px 0;">
 
-    function removeHiddenGroup(group) {
-        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
-    }
+<h3>Базовые правила расписания</h3>
 
-    function addDraftAppointment() {
-        const date = document.getElementById('newAppointmentDate').value;
-        const hour = document.getElementById('newAppointmentHour').value;
-        const minute = document.getElementById('newAppointmentMinute').value;
-        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+<div th:if="${#lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <p>Правила расписания пока не добавлены.</p>
+</div>
 
-        if (!date || !hour || !minute || !duration) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>День недели</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Ближайшие даты</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="rule : ${scheduleRules}">
+            <td th:text="${rule.dayOfWeek}"></td>
+            <td th:text="${#temporals.format(rule.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(rule.endTime, 'HH:mm')}"></td>
+            <td>
+                <span>ближайшие даты: </span>
+                <span th:text="${rulePreviewDates[rule.id]}"></span>
+            </td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-rules/{ruleId}/delete(activityId=${activity.id}, ruleId=${rule.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить правило расписания?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
-        const end = new Date(start.getTime() + duration * 60000);
+<div style="margin-top: 20px;">
+    <h4>Добавить правило</h4>
 
-        const group = 'new-' + Date.now();
+    <form th:action="@{/provider/activities/{id}/schedule-rules(id=${activity.id})}"
+          method="post">
 
-        addHiddenInput('newAppointmentDates', date, group);
-        addHiddenInput('newAppointmentHours', hour, group);
-        addHiddenInput('newAppointmentMinutes', minute, group);
+        <div>
+            <label for="dayOfWeek">День недели:</label>
+            <select id="dayOfWeek" name="dayOfWeek" required>
+                <option value="">Выберите день</option>
+                <option value="MONDAY">MONDAY</option>
+                <option value="TUESDAY">TUESDAY</option>
+                <option value="WEDNESDAY">WEDNESDAY</option>
+                <option value="THURSDAY">THURSDAY</option>
+                <option value="FRIDAY">FRIDAY</option>
+                <option value="SATURDAY">SATURDAY</option>
+                <option value="SUNDAY">SUNDAY</option>
+            </select>
+        </div>
 
-        const row = document.createElement('tr');
-        row.dataset.group = group;
+        <div style="margin-top: 10px;">
+            <label for="ruleStartTime">Начало:</label>
+            <input id="ruleStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
 
-        const formattedDate = start.toLocaleDateString('ru-RU');
-        const startText = hour + ':' + minute;
-        const endHour = String(end.getHours()).padStart(2, '0');
-        const endMinute = String(end.getMinutes()).padStart(2, '0');
-        const endText = endHour + ':' + endMinute;
+        <div style="margin-top: 10px;">
+            <label for="ruleEndTime">Конец:</label>
+            <input id="ruleEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
 
-        row.innerHTML =
-            '<td>' + formattedDate + '</td>' +
-            '<td>' + startText + '</td>' +
-            '<td>' + endText + '</td>' +
-            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить правило</button>
+        </div>
+    </form>
+</div>
 
-        document.querySelector('#appointmentsTable tbody').appendChild(row);
+<hr style="margin: 30px 0;">
 
-        document.getElementById('newAppointmentDate').value = '';
-        document.getElementById('newAppointmentHour').value = '';
-        document.getElementById('newAppointmentMinute').value = '';
-    }
+<h3>Корректировки</h3>
 
-    function removeDraftAppointment(button, group) {
-        button.closest('tr').remove();
-        removeHiddenGroup(group);
-    }
+<div th:if="${scheduleOverrideError}" style="margin-top: 10px;">
+    <p th:text="${scheduleOverrideError}" style="color: red;"></p>
+</div>
 
-    function removeExistingAppointment(button, appointmentId) {
-        const group = 'delete-' + appointmentId;
+<div th:if="${#lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <p>Корректировки пока не добавлены.</p>
+</div>
 
-        if (document.querySelector('[data-group="' + group + '"]')) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Тип</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="scheduleOverride : ${scheduleOverrides}">
+            <td th:text="${#temporals.format(scheduleOverride.date, 'dd.MM.yyyy')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.endTime, 'HH:mm')}"></td>
+            <td th:text="${scheduleOverride.type}"></td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-overrides/{overrideId}/delete(activityId=${activity.id}, overrideId=${scheduleOverride.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить корректировку?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        addHiddenInput('appointmentsToDelete', appointmentId, group);
-        button.closest('tr').remove();
-    }
-</script>
+<div style="margin-top: 20px;">
+    <h4>Добавить корректировку</h4>
+
+    <form th:action="@{/provider/activities/{id}/schedule-overrides(id=${activity.id})}"
+          method="post">
+
+        <div>
+            <label for="overrideDate">Дата:</label>
+            <input id="overrideDate"
+                   type="date"
+                   name="date"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideStartTime">Начало:</label>
+            <input id="overrideStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideEndTime">Конец:</label>
+            <input id="overrideEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideType">Тип:</label>
+            <select id="overrideType" name="type" required>
+                <option value="">Выберите тип</option>
+                <option value="AVAILABLE">Доступно</option>
+                <option value="UNAVAILABLE">Недоступно</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить корректировку</button>
+        </div>
+    </form>
+</div>
 
 </body>
 </html>
