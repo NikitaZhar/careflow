@@ -1,8 +1,9 @@
 package com.careflow.model;
 
 import jakarta.persistence.*;
+
 import java.time.DayOfWeek;
-import java.time.LocalTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "activity_schedule_rules")
@@ -20,10 +21,10 @@ public class ActivityScheduleRule {
     private DayOfWeek dayOfWeek;
 
     @Column(nullable = false)
-    private LocalTime startTime;
+    private java.time.LocalTime startTime;
 
     @Column(nullable = false)
-    private LocalTime endTime;
+    private java.time.LocalTime endTime;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -31,9 +32,39 @@ public class ActivityScheduleRule {
     @PrePersist
     @PreUpdate
     private void validate() {
-        if (endTime.isBefore(startTime) || endTime.equals(startTime)) {
+        if (!hasValidTimeRange()) {
             throw new IllegalArgumentException("End time must be after start time");
         }
+    }
+
+    public TimeInterval toInterval() {
+        return TimeInterval.of(startTime, endTime);
+    }
+
+    public boolean hasValidTimeRange() {
+        return toInterval().isValid();
+    }
+
+    public boolean isOnDay(DayOfWeek otherDayOfWeek) {
+        return dayOfWeek != null && dayOfWeek.equals(otherDayOfWeek);
+    }
+
+    public boolean appliesTo(LocalDate date) {
+        return date != null
+                && dayOfWeek != null
+                && dayOfWeek.equals(date.getDayOfWeek());
+    }
+
+    public boolean overlaps(ActivityScheduleRule other) {
+        if (other == null) {
+            return false;
+        }
+
+        if (!isOnDay(other.getDayOfWeek())) {
+            return false;
+        }
+
+        return toInterval().intersects(other.toInterval());
     }
 
     // ===== GETTERS / SETTERS =====
@@ -58,19 +89,19 @@ public class ActivityScheduleRule {
         this.dayOfWeek = dayOfWeek;
     }
 
-    public LocalTime getStartTime() {
+    public java.time.LocalTime getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(LocalTime startTime) {
+    public void setStartTime(java.time.LocalTime startTime) {
         this.startTime = startTime;
     }
 
-    public LocalTime getEndTime() {
+    public java.time.LocalTime getEndTime() {
         return endTime;
     }
 
-    public void setEndTime(LocalTime endTime) {
+    public void setEndTime(java.time.LocalTime endTime) {
         this.endTime = endTime;
     }
 

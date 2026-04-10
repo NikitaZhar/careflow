@@ -6,8 +6,8 @@ import com.careflow.model.ActivityScheduleOverride;
 import com.careflow.model.ActivityScheduleRule;
 import com.careflow.model.ScheduleOverrideType;
 import com.careflow.model.User;
-import com.careflow.model.UserRole;
 import com.careflow.service.ActivityScheduleOverrideService;
+import com.careflow.service.ActivitySchedulePreviewService;
 import com.careflow.service.ActivityScheduleRuleService;
 import com.careflow.service.ActivityService;
 import jakarta.servlet.http.HttpSession;
@@ -19,27 +19,31 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Controller
 public class ProviderActivityController {
+
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String PROVIDER_REDIRECT = "redirect:/provider";
+    private static final String PROVIDER_ACTIVITY_EDIT_VIEW = "provider-activity-edit";
 
     private final SessionUserValidator sessionValidator;
     private final ActivityService activityService;
     private final ActivityScheduleRuleService activityScheduleRuleService;
     private final ActivityScheduleOverrideService activityScheduleOverrideService;
+    private final ActivitySchedulePreviewService activitySchedulePreviewService;
 
     public ProviderActivityController(SessionUserValidator sessionValidator,
                                       ActivityService activityService,
                                       ActivityScheduleRuleService activityScheduleRuleService,
-                                      ActivityScheduleOverrideService activityScheduleOverrideService) {
+                                      ActivityScheduleOverrideService activityScheduleOverrideService,
+                                      ActivitySchedulePreviewService activitySchedulePreviewService) {
         this.sessionValidator = sessionValidator;
         this.activityService = activityService;
         this.activityScheduleRuleService = activityScheduleRuleService;
         this.activityScheduleOverrideService = activityScheduleOverrideService;
+        this.activitySchedulePreviewService = activitySchedulePreviewService;
     }
 
     @PostMapping("/provider/activities")
@@ -49,20 +53,17 @@ public class ProviderActivityController {
                                  @RequestParam Integer durationMinutes,
                                  HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = new Activity();
         activity.setProvider(provider);
-        activity.setTitle(title);
-        activity.setDescription(description);
-        activity.setPrice(price);
-        activity.setDurationMinutes(durationMinutes);
+        activity.updateDetails(title, description, price, durationMinutes);
 
         activityService.saveActivity(activity);
-        return "redirect:/provider";
+        return PROVIDER_REDIRECT;
     }
 
     @GetMapping("/provider/activities/{id}")
@@ -70,18 +71,18 @@ public class ProviderActivityController {
                                        HttpSession session,
                                        Model model) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(id, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         populateEditModel(model, provider, activity);
-        return "provider-activity-edit";
+        return PROVIDER_ACTIVITY_EDIT_VIEW;
     }
 
     @PostMapping("/provider/activities/{id}")
@@ -92,41 +93,38 @@ public class ProviderActivityController {
                                  @RequestParam Integer durationMinutes,
                                  HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(id, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
-        activity.setTitle(title);
-        activity.setDescription(description);
-        activity.setPrice(price);
-        activity.setDurationMinutes(durationMinutes);
-
+        activity.updateDetails(title, description, price, durationMinutes);
         activityService.saveActivity(activity);
-        return "redirect:/provider/activities/" + activity.getId();
+
+        return redirectToActivity(activity.getId());
     }
 
     @PostMapping("/provider/activities/{id}/delete")
     public String deleteActivity(@PathVariable Long id,
                                  HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(id, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         activityService.deleteActivityById(activity.getId());
-        return "redirect:/provider";
+        return PROVIDER_REDIRECT;
     }
 
     @PostMapping("/provider/activities/{id}/schedule-rules")
@@ -136,14 +134,14 @@ public class ProviderActivityController {
                                      @RequestParam LocalTime endTime,
                                      HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(id, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         ActivityScheduleRule rule = new ActivityScheduleRule();
@@ -154,8 +152,7 @@ public class ProviderActivityController {
         rule.setActive(true);
 
         activityScheduleRuleService.create(rule);
-
-        return "redirect:/provider/activities/" + activity.getId();
+        return redirectToActivity(activity.getId());
     }
 
     @PostMapping("/provider/activities/{activityId}/schedule-rules/{ruleId}/delete")
@@ -163,28 +160,27 @@ public class ProviderActivityController {
                                      @PathVariable Long ruleId,
                                      HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(activityId, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         ActivityScheduleRule rule = activityScheduleRuleService.getById(ruleId);
         if (rule == null) {
-            return "redirect:/provider/activities/" + activity.getId();
+            return redirectToActivity(activity.getId());
         }
 
-        if (!rule.getActivity().getId().equals(activity.getId())) {
-            return "redirect:/provider";
+        if (rule.getActivity() == null || !rule.getActivity().getId().equals(activity.getId())) {
+            return PROVIDER_REDIRECT;
         }
 
         activityScheduleRuleService.delete(ruleId);
-
-        return "redirect:/provider/activities/" + activity.getId();
+        return redirectToActivity(activity.getId());
     }
 
     @PostMapping("/provider/activities/{id}/schedule-overrides")
@@ -196,14 +192,14 @@ public class ProviderActivityController {
                                          HttpSession session,
                                          Model model) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(id, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         ActivityScheduleOverride scheduleOverride = new ActivityScheduleOverride();
@@ -215,11 +211,11 @@ public class ProviderActivityController {
 
         try {
             activityScheduleOverrideService.create(scheduleOverride);
-            return "redirect:/provider/activities/" + activity.getId();
+            return redirectToActivity(activity.getId());
         } catch (IllegalArgumentException exception) {
             populateEditModel(model, provider, activity);
             model.addAttribute("scheduleOverrideError", exception.getMessage());
-            return "provider-activity-edit";
+            return PROVIDER_ACTIVITY_EDIT_VIEW;
         }
     }
 
@@ -228,32 +224,32 @@ public class ProviderActivityController {
                                          @PathVariable Long overrideId,
                                          HttpSession session) {
 
-        User provider = getValidProvider(session);
+        User provider = getValidProviderOrNull(session);
         if (provider == null) {
-            return "redirect:/auth/login";
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = getOwnedActivityOrNull(activityId, provider);
         if (activity == null) {
-            return "redirect:/provider";
+            return PROVIDER_REDIRECT;
         }
 
         ActivityScheduleOverride scheduleOverride = activityScheduleOverrideService.getById(overrideId);
         if (scheduleOverride == null) {
-            return "redirect:/provider/activities/" + activity.getId();
+            return redirectToActivity(activity.getId());
         }
 
-        if (!scheduleOverride.getActivity().getId().equals(activity.getId())) {
-            return "redirect:/provider";
+        if (scheduleOverride.getActivity() == null
+                || !scheduleOverride.getActivity().getId().equals(activity.getId())) {
+            return PROVIDER_REDIRECT;
         }
 
         activityScheduleOverrideService.delete(overrideId);
-
-        return "redirect:/provider/activities/" + activity.getId();
+        return redirectToActivity(activity.getId());
     }
 
-    private User getValidProvider(HttpSession session) {
-        return sessionValidator.getValidUser(session, UserRole.PROVIDER);
+    private User getValidProviderOrNull(HttpSession session) {
+        return sessionValidator.getValidProvider(session);
     }
 
     private Activity getOwnedActivityOrNull(Long activityId, User provider) {
@@ -263,15 +259,7 @@ public class ProviderActivityController {
             return null;
         }
 
-        if (activity.getProvider() == null) {
-            return null;
-        }
-
-        if (!activity.getProvider().getId().equals(provider.getId())) {
-            return null;
-        }
-
-        return activity;
+        return activity.belongsTo(provider) ? activity : null;
     }
 
     private void populateEditModel(Model model, User provider, Activity activity) {
@@ -284,38 +272,11 @@ public class ProviderActivityController {
         model.addAttribute("scheduleRules", scheduleRules);
         model.addAttribute("scheduleOverrides",
                 activityScheduleOverrideService.getByActivity(activity.getId()));
-        model.addAttribute("rulePreviewDates", buildRulePreviewDates(scheduleRules));
-    }
-    
-    private Map<Long, String> buildRulePreviewDates(List<ActivityScheduleRule> rules) {
-        Map<Long, String> previewDates = new LinkedHashMap<>();
-
-        for (ActivityScheduleRule rule : rules) {
-            previewDates.put(rule.getId(), buildNextDatesText(rule.getDayOfWeek(), 3));
-        }
-
-        return previewDates;
+        model.addAttribute("rulePreviewDates",
+                activitySchedulePreviewService.buildRulePreviewDates(scheduleRules));
     }
 
-    private String buildNextDatesText(java.time.DayOfWeek dayOfWeek, int count) {
-        LocalDate today = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM");
-        StringBuilder result = new StringBuilder();
-
-        LocalDate currentDate = today;
-        int found = 0;
-
-        while (found < count) {
-            if (currentDate.getDayOfWeek().equals(dayOfWeek)) {
-                if (!result.isEmpty()) {
-                    result.append(", ");
-                }
-                result.append(currentDate.format(formatter));
-                found++;
-            }
-            currentDate = currentDate.plusDays(1);
-        }
-
-        return result.toString();
+    private String redirectToActivity(Long activityId) {
+        return "redirect:/provider/activities/" + activityId;
     }
 }

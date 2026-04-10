@@ -1,6 +1,7 @@
 package com.careflow.model;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -31,9 +32,33 @@ public class ActivityScheduleOverride {
     @PrePersist
     @PreUpdate
     private void validate() {
-        if (endTime.isBefore(startTime) || endTime.equals(startTime)) {
+        if (!hasValidTimeRange()) {
             throw new IllegalArgumentException("End time must be after start time");
         }
+    }
+
+    public TimeInterval toInterval() {
+        return TimeInterval.of(startTime, endTime);
+    }
+
+    public boolean hasValidTimeRange() {
+        return toInterval().isValid();
+    }
+
+    public boolean isOnDate(LocalDate otherDate) {
+        return date != null && date.equals(otherDate);
+    }
+
+    public boolean overlaps(ActivityScheduleOverride other) {
+        if (other == null) {
+            return false;
+        }
+
+        if (!isOnDate(other.getDate())) {
+            return false;
+        }
+
+        return toInterval().intersects(other.toInterval());
     }
 
     // ===== GETTERS / SETTERS =====

@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ClientController {
 
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String CLIENT_VIEW = "client";
+
     private final SessionUserValidator sessionValidator;
 
     public ClientController(SessionUserValidator sessionValidator) {
@@ -19,10 +22,20 @@ public class ClientController {
 
     @GetMapping("/client")
     public String showClientPage(HttpSession session, Model model) {
-        User user = sessionValidator.getValidUser(session, UserRole.CLIENT);
-        if (user == null) return "redirect:/auth/login";
+        User client = getClientOrNull(session);
+        if (client == null) {
+            return LOGIN_REDIRECT;
+        }
 
-        model.addAttribute("currentUser", user);
-        return "client";
+        populateClientModel(model, client);
+        return CLIENT_VIEW;
+    }
+
+    private User getClientOrNull(HttpSession session) {
+        return sessionValidator.getValidUser(session, UserRole.CLIENT);
+    }
+
+    private void populateClientModel(Model model, User client) {
+        model.addAttribute("currentUser", client);
     }
 }

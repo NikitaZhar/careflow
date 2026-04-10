@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ProviderController {
 
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String PROVIDER_VIEW = "provider";
+
     private final SessionUserValidator sessionValidator;
     private final ActivityService activityService;
 
@@ -23,13 +26,21 @@ public class ProviderController {
 
     @GetMapping("/provider")
     public String showProviderPage(HttpSession session, Model model) {
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
-        model.addAttribute("currentUser", user);
-        model.addAttribute("activities", activityService.findActivitiesByProviderId(user.getId()));
-        return "provider";
+        populateProviderModel(model, provider);
+        return PROVIDER_VIEW;
+    }
+
+    private User getProviderOrNull(HttpSession session) {
+        return sessionValidator.getValidUser(session, UserRole.PROVIDER);
+    }
+
+    private void populateProviderModel(Model model, User provider) {
+        model.addAttribute("currentUser", provider);
+        model.addAttribute("activities", activityService.findActivitiesByProviderId(provider.getId()));
     }
 }

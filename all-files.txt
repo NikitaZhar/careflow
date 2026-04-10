@@ -387,8 +387,7 @@ WHERE NOT EXISTS (
 
 <form id="activityForm"
       th:action="@{/provider/activities/{id}(id=${activity.id})}"
-      method="post"
-      enctype="multipart/form-data">
+      method="post">
 
     <div>
         <label for="title">Название:</label>
@@ -429,89 +428,15 @@ WHERE NOT EXISTS (
                th:value="${activity.durationMinutes}"
                required>
     </div>
-
-    <div style="margin-top: 20px;">
-        <p><strong>Необязательные материалы:</strong></p>
-
-        <div style="margin-top: 10px;">
-            <label for="document">Загрузить текстовый или PDF файл:</label>
-            <input id="document" type="file" name="document" accept=".txt,.pdf">
-        </div>
-
-        <div style="margin-top: 10px;">
-            <label for="video">Загрузить видео файл:</label>
-            <input id="video" type="file" name="video" accept="video/*">
-        </div>
-    </div>
-
-    <h3 style="margin-top: 30px;">Доступные термины</h3>
-
-    <table id="appointmentsTable" style="margin-top: 10px;">
-        <thead>
-            <tr>
-                <th>Дата</th>
-                <th>Начало</th>
-                <th>Конец</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="appointment : ${availableAppointments}"
-                th:attr="data-existing-id=${appointment.id}">
-                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
-                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
-                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
-                <td>
-                    <button type="button"
-                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div style="margin-top: 20px;">
-        <label for="newAppointmentDate">Дата:</label>
-        <input id="newAppointmentDate" type="date">
-    </div>
-
-    <div style="margin-top: 10px;">
-        <label>Время начала:</label>
-
-        <select id="newAppointmentHour">
-            <option value="">Час</option>
-            <option th:each="h : ${#numbers.sequence(0,23)}"
-                    th:value="${h < 10 ? '0' + h : h}"
-                    th:text="${h < 10 ? '0' + h : h}">
-            </option>
-        </select>
-
-        <span>:</span>
-
-        <select id="newAppointmentMinute">
-            <option value="">Мин</option>
-            <option value="00">00</option>
-            <option value="15">15</option>
-            <option value="30">30</option>
-            <option value="45">45</option>
-        </select>
-
-        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
-            Добавить
-        </button>
-    </div>
-
-    <div id="hiddenAppointments"></div>
 </form>
 
-<div style="margin-top: 30px;">
+<div style="margin-top: 20px;">
     <button type="submit" form="activityForm">Сохранить</button>
 
     <button type="button"
             onclick="window.location.href='/provider'"
             style="margin-left: 10px;">
-        Отменить
+        Назад
     </button>
 
     <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
@@ -522,77 +447,169 @@ WHERE NOT EXISTS (
     </form>
 </div>
 
-<script>
-    function addHiddenInput(name, value, group) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        input.dataset.group = group;
-        document.getElementById('hiddenAppointments').appendChild(input);
-    }
+<hr style="margin: 30px 0;">
 
-    function removeHiddenGroup(group) {
-        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
-    }
+<h3>Базовые правила расписания</h3>
 
-    function addDraftAppointment() {
-        const date = document.getElementById('newAppointmentDate').value;
-        const hour = document.getElementById('newAppointmentHour').value;
-        const minute = document.getElementById('newAppointmentMinute').value;
-        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+<div th:if="${#lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <p>Правила расписания пока не добавлены.</p>
+</div>
 
-        if (!date || !hour || !minute || !duration) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>День недели</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Ближайшие даты</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="rule : ${scheduleRules}">
+            <td th:text="${rule.dayOfWeek}"></td>
+            <td th:text="${#temporals.format(rule.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(rule.endTime, 'HH:mm')}"></td>
+            <td>
+                <span>ближайшие даты: </span>
+                <span th:text="${rulePreviewDates[rule.id]}"></span>
+            </td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-rules/{ruleId}/delete(activityId=${activity.id}, ruleId=${rule.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить правило расписания?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
-        const end = new Date(start.getTime() + duration * 60000);
+<div style="margin-top: 20px;">
+    <h4>Добавить правило</h4>
 
-        const group = 'new-' + Date.now();
+    <form th:action="@{/provider/activities/{id}/schedule-rules(id=${activity.id})}"
+          method="post">
 
-        addHiddenInput('newAppointmentDates', date, group);
-        addHiddenInput('newAppointmentHours', hour, group);
-        addHiddenInput('newAppointmentMinutes', minute, group);
+        <div>
+            <label for="dayOfWeek">День недели:</label>
+            <select id="dayOfWeek" name="dayOfWeek" required>
+                <option value="">Выберите день</option>
+                <option value="MONDAY">MONDAY</option>
+                <option value="TUESDAY">TUESDAY</option>
+                <option value="WEDNESDAY">WEDNESDAY</option>
+                <option value="THURSDAY">THURSDAY</option>
+                <option value="FRIDAY">FRIDAY</option>
+                <option value="SATURDAY">SATURDAY</option>
+                <option value="SUNDAY">SUNDAY</option>
+            </select>
+        </div>
 
-        const row = document.createElement('tr');
-        row.dataset.group = group;
+        <div style="margin-top: 10px;">
+            <label for="ruleStartTime">Начало:</label>
+            <input id="ruleStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
 
-        const formattedDate = start.toLocaleDateString('ru-RU');
-        const startText = hour + ':' + minute;
-        const endHour = String(end.getHours()).padStart(2, '0');
-        const endMinute = String(end.getMinutes()).padStart(2, '0');
-        const endText = endHour + ':' + endMinute;
+        <div style="margin-top: 10px;">
+            <label for="ruleEndTime">Конец:</label>
+            <input id="ruleEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
 
-        row.innerHTML =
-            '<td>' + formattedDate + '</td>' +
-            '<td>' + startText + '</td>' +
-            '<td>' + endText + '</td>' +
-            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить правило</button>
+        </div>
+    </form>
+</div>
 
-        document.querySelector('#appointmentsTable tbody').appendChild(row);
+<hr style="margin: 30px 0;">
 
-        document.getElementById('newAppointmentDate').value = '';
-        document.getElementById('newAppointmentHour').value = '';
-        document.getElementById('newAppointmentMinute').value = '';
-    }
+<h3>Корректировки</h3>
 
-    function removeDraftAppointment(button, group) {
-        button.closest('tr').remove();
-        removeHiddenGroup(group);
-    }
+<div th:if="${scheduleOverrideError}" style="margin-top: 10px;">
+    <p th:text="${scheduleOverrideError}" style="color: red;"></p>
+</div>
 
-    function removeExistingAppointment(button, appointmentId) {
-        const group = 'delete-' + appointmentId;
+<div th:if="${#lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <p>Корректировки пока не добавлены.</p>
+</div>
 
-        if (document.querySelector('[data-group="' + group + '"]')) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Тип</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="scheduleOverride : ${scheduleOverrides}">
+            <td th:text="${#temporals.format(scheduleOverride.date, 'dd.MM.yyyy')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.endTime, 'HH:mm')}"></td>
+            <td th:text="${scheduleOverride.type}"></td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-overrides/{overrideId}/delete(activityId=${activity.id}, overrideId=${scheduleOverride.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить корректировку?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        addHiddenInput('appointmentsToDelete', appointmentId, group);
-        button.closest('tr').remove();
-    }
-</script>
+<div style="margin-top: 20px;">
+    <h4>Добавить корректировку</h4>
+
+    <form th:action="@{/provider/activities/{id}/schedule-overrides(id=${activity.id})}"
+          method="post">
+
+        <div>
+            <label for="overrideDate">Дата:</label>
+            <input id="overrideDate"
+                   type="date"
+                   name="date"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideStartTime">Начало:</label>
+            <input id="overrideStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideEndTime">Конец:</label>
+            <input id="overrideEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideType">Тип:</label>
+            <select id="overrideType" name="type" required>
+                <option value="">Выберите тип</option>
+                <option value="AVAILABLE">Доступно</option>
+                <option value="UNAVAILABLE">Недоступно</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить корректировку</button>
+        </div>
+    </form>
+</div>
 
 </body>
 </html>
@@ -652,6 +669,852 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.username").value("test_user"))
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.role").value("CLIENT"));
+    }
+}
+===== ./src/test/java/com/careflow/TimeIntervalLogicTest.java =====
+package com.careflow;
+
+import com.careflow.model.TimeInterval;
+import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
+import java.time.LocalTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class TimeIntervalLogicTest {
+
+    @Test
+    void whenStartBeforeEnd_thenIntervalIsValid() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertTrue(interval.isValid());
+    }
+
+    @Test
+    void whenStartEqualsEnd_thenIntervalIsInvalid() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(10, 0)
+        );
+
+        assertFalse(interval.isValid());
+    }
+
+    @Test
+    void whenStartAfterEnd_thenIntervalIsInvalid() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(14, 0),
+                LocalTime.of(13, 0)
+        );
+
+        assertFalse(interval.isValid());
+    }
+
+    @Test
+    void whenIntervalsOverlap_thenIntersectsReturnsTrue() {
+        TimeInterval base = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        TimeInterval overlap = new TimeInterval(
+                LocalTime.of(10, 30),
+                LocalTime.of(11, 30)
+        );
+
+        assertTrue(base.intersects(overlap));
+        assertTrue(overlap.intersects(base));
+    }
+
+    @Test
+    void whenIntervalsOnlyTouchBorders_thenIntersectsReturnsFalse() {
+        TimeInterval base = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        TimeInterval separate = new TimeInterval(
+                LocalTime.of(11, 0),
+                LocalTime.of(12, 0)
+        );
+
+        assertFalse(base.intersects(separate));
+        assertFalse(separate.intersects(base));
+    }
+
+    @Test
+    void whenIntervalsAreSeparated_thenIntersectsReturnsFalse() {
+        TimeInterval first = new TimeInterval(
+                LocalTime.of(8, 0),
+                LocalTime.of(9, 0)
+        );
+
+        TimeInterval second = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertFalse(first.intersects(second));
+        assertFalse(second.intersects(first));
+    }
+
+    @Test
+    void whenIntervalsAreEqual_thenIntersectsReturnsTrue() {
+        TimeInterval first = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        TimeInterval second = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertTrue(first.intersects(second));
+    }
+
+    @Test
+    void containsReturnsTrueWhenTimeInsideInterval() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertTrue(interval.contains(LocalTime.of(10, 30)));
+    }
+
+    @Test
+    void containsReturnsTrueWhenTimeEqualsStart() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertTrue(interval.contains(LocalTime.of(10, 0)));
+    }
+
+    @Test
+    void containsReturnsFalseWhenTimeEqualsEnd() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0)
+        );
+
+        assertFalse(interval.contains(LocalTime.of(11, 0)));
+    }
+
+    @Test
+    void durationReturnsCorrectValue() {
+        TimeInterval interval = new TimeInterval(
+                LocalTime.of(9, 15),
+                LocalTime.of(10, 45)
+        );
+
+        assertEquals(Duration.ofMinutes(90), interval.duration());
+    }
+
+    @Test
+    void gettersReturnOriginalValues() {
+        LocalTime start = LocalTime.of(9, 15);
+        LocalTime end = LocalTime.of(10, 45);
+
+        TimeInterval interval = new TimeInterval(start, end);
+
+        assertEquals(start, interval.getStart());
+        assertEquals(end, interval.getEnd());
+    }
+}
+===== ./src/test/java/com/careflow/ActivityScheduleRuleTest.java =====
+package com.careflow;
+
+import com.careflow.model.ActivityScheduleRule;
+import org.junit.jupiter.api.Test;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ActivityScheduleRuleTest {
+
+    @Test
+    void hasValidTimeRangeReturnsTrueForValidInterval() {
+        ActivityScheduleRule rule = new ActivityScheduleRule();
+        rule.setDayOfWeek(DayOfWeek.MONDAY);
+        rule.setStartTime(LocalTime.of(10, 0));
+        rule.setEndTime(LocalTime.of(11, 0));
+
+        assertTrue(rule.hasValidTimeRange());
+    }
+
+    @Test
+    void hasValidTimeRangeReturnsFalseForInvalidInterval() {
+        ActivityScheduleRule rule = new ActivityScheduleRule();
+        rule.setDayOfWeek(DayOfWeek.MONDAY);
+        rule.setStartTime(LocalTime.of(11, 0));
+        rule.setEndTime(LocalTime.of(10, 0));
+
+        assertFalse(rule.hasValidTimeRange());
+    }
+
+    @Test
+    void appliesToReturnsTrueForSameDayOfWeek() {
+        ActivityScheduleRule rule = new ActivityScheduleRule();
+        rule.setDayOfWeek(DayOfWeek.MONDAY);
+        rule.setStartTime(LocalTime.of(10, 0));
+        rule.setEndTime(LocalTime.of(11, 0));
+
+        assertTrue(rule.appliesTo(LocalDate.of(2026, 4, 13))); // Monday
+    }
+
+    @Test
+    void overlapsReturnsTrueForSameDayAndIntersectingIntervals() {
+        ActivityScheduleRule first = new ActivityScheduleRule();
+        first.setDayOfWeek(DayOfWeek.MONDAY);
+        first.setStartTime(LocalTime.of(10, 0));
+        first.setEndTime(LocalTime.of(11, 0));
+
+        ActivityScheduleRule second = new ActivityScheduleRule();
+        second.setDayOfWeek(DayOfWeek.MONDAY);
+        second.setStartTime(LocalTime.of(10, 30));
+        second.setEndTime(LocalTime.of(11, 30));
+
+        assertTrue(first.overlaps(second));
+    }
+
+    @Test
+    void overlapsReturnsFalseForDifferentDays() {
+        ActivityScheduleRule first = new ActivityScheduleRule();
+        first.setDayOfWeek(DayOfWeek.MONDAY);
+        first.setStartTime(LocalTime.of(10, 0));
+        first.setEndTime(LocalTime.of(11, 0));
+
+        ActivityScheduleRule second = new ActivityScheduleRule();
+        second.setDayOfWeek(DayOfWeek.TUESDAY);
+        second.setStartTime(LocalTime.of(10, 30));
+        second.setEndTime(LocalTime.of(11, 30));
+
+        assertFalse(first.overlaps(second));
+    }
+}
+===== ./src/test/java/com/careflow/SessionUserValidatorTest.java =====
+package com.careflow;
+
+import com.careflow.controller.auth.SessionUserValidator;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpSession;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SessionUserValidatorTest {
+
+    private final SessionUserValidator sessionUserValidator = new SessionUserValidator();
+
+    @Test
+    void getCurrentUserReturnsUserFromSession() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("admin", "123", "admin@test.com", UserRole.ADMIN);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getCurrentUser(session);
+
+        assertSame(user, result);
+    }
+
+    @Test
+    void getValidUserReturnsNullWhenSessionIsEmpty() {
+        MockHttpSession session = new MockHttpSession();
+
+        User result = sessionUserValidator.getValidUser(session, UserRole.ADMIN);
+
+        assertNull(result);
+    }
+
+    @Test
+    void getValidUserReturnsNullWhenRoleDoesNotMatch() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("client", "123", "client@test.com", UserRole.CLIENT);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getValidUser(session, UserRole.ADMIN);
+
+        assertNull(result);
+    }
+
+    @Test
+    void getValidUserReturnsUserWhenRoleMatches() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("admin", "123", "admin@test.com", UserRole.ADMIN);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getValidUser(session, UserRole.ADMIN);
+
+        assertSame(user, result);
+    }
+
+    @Test
+    void getValidAdminReturnsUserWhenAdminMatches() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("admin", "123", "admin@test.com", UserRole.ADMIN);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getValidAdmin(session);
+
+        assertSame(user, result);
+    }
+
+    @Test
+    void getValidProviderReturnsUserWhenProviderMatches() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("provider", "123", "provider@test.com", UserRole.PROVIDER);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getValidProvider(session);
+
+        assertSame(user, result);
+    }
+
+    @Test
+    void getValidClientReturnsUserWhenClientMatches() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("client", "123", "client@test.com", UserRole.CLIENT);
+        session.setAttribute("user", user);
+
+        User result = sessionUserValidator.getValidClient(session);
+
+        assertSame(user, result);
+    }
+
+    @Test
+    void saveStoresUserInSession() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("admin", "123", "admin@test.com", UserRole.ADMIN);
+
+        sessionUserValidator.save(session, user);
+
+        assertSame(user, session.getAttribute("user"));
+    }
+
+    @Test
+    void clearInvalidatesSession() {
+        MockHttpSession session = new MockHttpSession();
+        User user = new User("admin", "123", "admin@test.com", UserRole.ADMIN);
+        session.setAttribute("user", user);
+
+        sessionUserValidator.clear(session);
+
+        assertTrue(session.isInvalid());
+    }
+}
+===== ./src/test/java/com/careflow/ActivityOwnershipTest.java =====
+package com.careflow;
+
+import com.careflow.model.Activity;
+import com.careflow.model.ActivityStatus;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import com.careflow.service.ActivityScheduleOverrideService;
+import com.careflow.service.ActivityScheduleRuleService;
+import com.careflow.service.ActivityService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class ActivityOwnershipTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private ActivityService activityService;
+
+    @MockitoBean
+    private ActivityScheduleRuleService activityScheduleRuleService;
+
+    @MockitoBean
+    private ActivityScheduleOverrideService activityScheduleOverrideService;
+
+    @Test
+    void whenNoSession_thenRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/provider/activities/999"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login"));
+    }
+
+    @Test
+    void whenProviderAccessNonExistentActivity_thenRedirectToProvider() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User provider = createUserWithId(1L, "testProvider", "123", "test@test.com", UserRole.PROVIDER);
+        session.setAttribute("user", provider);
+
+        when(activityService.findActivityById(999L)).thenReturn(null);
+
+        mockMvc.perform(get("/provider/activities/999").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/provider"));
+    }
+
+    @Test
+    void whenProviderAccessForeignActivity_thenRedirectToProvider() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User loggedInProvider = createUserWithId(1L, "owner1", "123", "owner1@test.com", UserRole.PROVIDER);
+        User foreignProvider = createUserWithId(2L, "owner2", "123", "owner2@test.com", UserRole.PROVIDER);
+        session.setAttribute("user", loggedInProvider);
+
+        Activity foreignActivity = createActivityWithId(999L, foreignProvider);
+        when(activityService.findActivityById(999L)).thenReturn(foreignActivity);
+
+        mockMvc.perform(get("/provider/activities/999").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/provider"));
+    }
+
+    private User createUserWithId(Long id, String username, String password, String email, UserRole role) {
+        User user = new User(username, password, email, role);
+        setUserId(user, id);
+        return user;
+    }
+
+    private Activity createActivityWithId(Long id, User provider) {
+        Activity activity = new Activity();
+        setActivityId(activity, id);
+        activity.setProvider(provider);
+        activity.setTitle("Massage");
+        activity.setDescription("Relax massage");
+        activity.setPrice(new BigDecimal("100.00"));
+        activity.setDurationMinutes(60);
+        activity.setStatus(ActivityStatus.ACTIVE);
+        return activity;
+    }
+
+    private void setUserId(User user, Long id) {
+        try {
+            Field idField = User.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(user, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось установить id пользователю", e);
+        }
+    }
+
+    private void setActivityId(Activity activity, Long id) {
+        try {
+            Field idField = Activity.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(activity, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось установить id активности", e);
+        }
+    }
+}
+===== ./src/test/java/com/careflow/ActivityDomainLogicTest.java =====
+package com.careflow;
+
+import com.careflow.model.Activity;
+import com.careflow.model.ActivityStatus;
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ActivityDomainLogicTest {
+
+    @Test
+    void belongsToReturnsTrueForSameProvider() {
+        User provider = createUserWithId(1L, "provider1");
+        Activity activity = createActivity(provider);
+
+        assertTrue(activity.belongsTo(provider));
+    }
+
+    @Test
+    void belongsToReturnsFalseForDifferentProvider() {
+        User owner = createUserWithId(1L, "provider1");
+        User anotherProvider = createUserWithId(2L, "provider2");
+        Activity activity = createActivity(owner);
+
+        assertFalse(activity.belongsTo(anotherProvider));
+    }
+
+    @Test
+    void isOwnedByReturnsTrueForSameProviderId() {
+        User provider = createUserWithId(10L, "provider1");
+        Activity activity = createActivity(provider);
+
+        assertTrue(activity.isOwnedBy(10L));
+    }
+
+    @Test
+    void isOwnedByReturnsFalseForDifferentProviderId() {
+        User provider = createUserWithId(10L, "provider1");
+        Activity activity = createActivity(provider);
+
+        assertFalse(activity.isOwnedBy(99L));
+    }
+
+    @Test
+    void isActiveReturnsTrueForActiveStatus() {
+        Activity activity = createActivity(createUserWithId(1L, "provider1"));
+        activity.setStatus(ActivityStatus.ACTIVE);
+
+        assertTrue(activity.isActive());
+        assertFalse(activity.isInactive());
+    }
+
+    @Test
+    void isInactiveReturnsTrueForInactiveStatus() {
+        Activity activity = createActivity(createUserWithId(1L, "provider1"));
+        activity.setStatus(ActivityStatus.INACTIVE);
+
+        assertTrue(activity.isInactive());
+        assertFalse(activity.isActive());
+    }
+
+    @Test
+    void updateDetailsChangesMainFields() {
+        Activity activity = createActivity(createUserWithId(1L, "provider1"));
+
+        activity.updateDetails(
+                "New title",
+                "New description",
+                new BigDecimal("150.00"),
+                90
+        );
+
+        assertEquals("New title", activity.getTitle());
+        assertEquals("New description", activity.getDescription());
+        assertEquals(new BigDecimal("150.00"), activity.getPrice());
+        assertEquals(90, activity.getDurationMinutes());
+    }
+
+    @Test
+    void activateSetsActiveStatus() {
+        Activity activity = createActivity(createUserWithId(1L, "provider1"));
+        activity.setStatus(ActivityStatus.INACTIVE);
+
+        activity.activate();
+
+        assertEquals(ActivityStatus.ACTIVE, activity.getStatus());
+    }
+
+    @Test
+    void deactivateSetsInactiveStatus() {
+        Activity activity = createActivity(createUserWithId(1L, "provider1"));
+        activity.setStatus(ActivityStatus.ACTIVE);
+
+        activity.deactivate();
+
+        assertEquals(ActivityStatus.INACTIVE, activity.getStatus());
+    }
+
+    private Activity createActivity(User provider) {
+        Activity activity = new Activity();
+        activity.setProvider(provider);
+        activity.setTitle("Massage");
+        activity.setDescription("Relax massage");
+        activity.setPrice(new BigDecimal("100.00"));
+        activity.setDurationMinutes(60);
+        activity.setStatus(ActivityStatus.ACTIVE);
+        return activity;
+    }
+
+    private User createUserWithId(Long id, String username) {
+        User user = new User(username, "123456", username + "@test.com", UserRole.PROVIDER);
+        setUserId(user, id);
+        return user;
+    }
+
+    private void setUserId(User user, Long id) {
+        try {
+            Field idField = User.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(user, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось установить id пользователю", e);
+        }
+    }
+}
+===== ./src/test/java/com/careflow/ActivitySchedulePreviewServiceTest.java =====
+package com.careflow;
+
+import com.careflow.model.ActivityScheduleRule;
+import com.careflow.service.ActivitySchedulePreviewService;
+import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ActivitySchedulePreviewServiceTest {
+
+    private final ActivitySchedulePreviewService previewService = new ActivitySchedulePreviewService();
+
+    @Test
+    void buildRulePreviewDatesReturnsPreviewForEachRule() {
+        ActivityScheduleRule first = createRuleWithId(1L, DayOfWeek.MONDAY);
+        ActivityScheduleRule second = createRuleWithId(2L, DayOfWeek.WEDNESDAY);
+
+        Map<Long, String> previewDates = previewService.buildRulePreviewDates(List.of(first, second));
+
+        assertEquals(2, previewDates.size());
+        assertTrue(previewDates.containsKey(1L));
+        assertTrue(previewDates.containsKey(2L));
+        assertNotNull(previewDates.get(1L));
+        assertNotNull(previewDates.get(2L));
+        assertFalse(previewDates.get(1L).isBlank());
+        assertFalse(previewDates.get(2L).isBlank());
+    }
+
+    @Test
+    void buildNextDatesTextReturnsCommaSeparatedDates() {
+        String result = previewService.buildNextDatesText(DayOfWeek.MONDAY, 3);
+
+        assertNotNull(result);
+        assertFalse(result.isBlank());
+        assertEquals(3, result.split(", ").length);
+    }
+
+    private ActivityScheduleRule createRuleWithId(Long id, DayOfWeek dayOfWeek) {
+        ActivityScheduleRule rule = new ActivityScheduleRule();
+        setRuleId(rule, id);
+        rule.setDayOfWeek(dayOfWeek);
+        rule.setStartTime(LocalTime.of(10, 0));
+        rule.setEndTime(LocalTime.of(11, 0));
+        rule.setActive(true);
+        return rule;
+    }
+
+    private void setRuleId(ActivityScheduleRule rule, Long id) {
+        try {
+            Field idField = ActivityScheduleRule.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(rule, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось установить id правилу расписания", e);
+        }
+    }
+}
+===== ./src/test/java/com/careflow/ActivityScheduleOverrideTest.java =====
+package com.careflow;
+
+import com.careflow.model.ActivityScheduleOverride;
+import com.careflow.model.ScheduleOverrideType;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ActivityScheduleOverrideTest {
+
+    @Test
+    void hasValidTimeRangeReturnsTrueForValidInterval() {
+        ActivityScheduleOverride override = new ActivityScheduleOverride();
+        override.setDate(LocalDate.of(2026, 4, 15));
+        override.setStartTime(LocalTime.of(10, 0));
+        override.setEndTime(LocalTime.of(11, 0));
+        override.setType(ScheduleOverrideType.AVAILABLE);
+
+        assertTrue(override.hasValidTimeRange());
+    }
+
+    @Test
+    void hasValidTimeRangeReturnsFalseForInvalidInterval() {
+        ActivityScheduleOverride override = new ActivityScheduleOverride();
+        override.setDate(LocalDate.of(2026, 4, 15));
+        override.setStartTime(LocalTime.of(11, 0));
+        override.setEndTime(LocalTime.of(10, 0));
+        override.setType(ScheduleOverrideType.AVAILABLE);
+
+        assertFalse(override.hasValidTimeRange());
+    }
+
+    @Test
+    void isOnDateReturnsTrueForSameDate() {
+        ActivityScheduleOverride override = new ActivityScheduleOverride();
+        override.setDate(LocalDate.of(2026, 4, 15));
+        override.setStartTime(LocalTime.of(10, 0));
+        override.setEndTime(LocalTime.of(11, 0));
+        override.setType(ScheduleOverrideType.AVAILABLE);
+
+        assertTrue(override.isOnDate(LocalDate.of(2026, 4, 15)));
+    }
+
+    @Test
+    void overlapsReturnsTrueForSameDateAndIntersectingIntervals() {
+        ActivityScheduleOverride first = new ActivityScheduleOverride();
+        first.setDate(LocalDate.of(2026, 4, 15));
+        first.setStartTime(LocalTime.of(10, 0));
+        first.setEndTime(LocalTime.of(11, 0));
+        first.setType(ScheduleOverrideType.AVAILABLE);
+
+        ActivityScheduleOverride second = new ActivityScheduleOverride();
+        second.setDate(LocalDate.of(2026, 4, 15));
+        second.setStartTime(LocalTime.of(10, 30));
+        second.setEndTime(LocalTime.of(11, 30));
+        second.setType(ScheduleOverrideType.UNAVAILABLE);
+
+        assertTrue(first.overlaps(second));
+    }
+
+    @Test
+    void overlapsReturnsFalseForDifferentDates() {
+        ActivityScheduleOverride first = new ActivityScheduleOverride();
+        first.setDate(LocalDate.of(2026, 4, 15));
+        first.setStartTime(LocalTime.of(10, 0));
+        first.setEndTime(LocalTime.of(11, 0));
+        first.setType(ScheduleOverrideType.AVAILABLE);
+
+        ActivityScheduleOverride second = new ActivityScheduleOverride();
+        second.setDate(LocalDate.of(2026, 4, 16));
+        second.setStartTime(LocalTime.of(10, 30));
+        second.setEndTime(LocalTime.of(11, 30));
+        second.setType(ScheduleOverrideType.UNAVAILABLE);
+
+        assertFalse(first.overlaps(second));
+    }
+}
+===== ./src/test/java/com/careflow/SecurityAccessTest.java =====
+package com.careflow;
+
+import com.careflow.model.User;
+import com.careflow.model.UserRole;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.lang.reflect.Field;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class SecurityAccessTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void whenNoSession_thenAdminRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/admin"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login"));
+    }
+
+    @Test
+    void whenNoSession_thenClientRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/client"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login"));
+    }
+
+    @Test
+    void whenNoSession_thenProviderRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/provider"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login"));
+    }
+
+    @Test
+    void whenAdminAccessAdminPage_thenSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User admin = createUserWithId(1L, "admin_test", "123", "admin@test.com", UserRole.ADMIN);
+        session.setAttribute("user", admin);
+
+        mockMvc.perform(get("/admin").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin"))
+                .andExpect(model().attributeExists("currentUser"))
+                .andExpect(model().attributeExists("providers"));
+    }
+
+    @Test
+    void whenClientAccessClientPage_thenSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User client = createUserWithId(2L, "client_test", "123", "client@test.com", UserRole.CLIENT);
+        session.setAttribute("user", client);
+
+        mockMvc.perform(get("/client").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("client"))
+                .andExpect(model().attributeExists("currentUser"));
+    }
+
+    @Test
+    void whenProviderAccessProviderPage_thenSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User provider = createUserWithId(3L, "provider_test", "123", "provider@test.com", UserRole.PROVIDER);
+        session.setAttribute("user", provider);
+
+        mockMvc.perform(get("/provider").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("provider"))
+                .andExpect(model().attributeExists("currentUser"))
+                .andExpect(model().attributeExists("activities"));
+    }
+
+    @Test
+    void whenClientAccessAdminPage_thenRedirectToLogin() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        User client = createUserWithId(4L, "client_test_2", "123", "client2@test.com", UserRole.CLIENT);
+        session.setAttribute("user", client);
+
+        mockMvc.perform(get("/admin").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login"));
+    }
+
+    private User createUserWithId(Long id,
+                                  String username,
+                                  String password,
+                                  String email,
+                                  UserRole role) {
+        User user = new User(username, password, email, role);
+        setId(user, id);
+        return user;
+    }
+
+    private void setId(User user, Long id) {
+        try {
+            Field idField = User.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(user, id);
+        } catch (Exception e) {
+            throw new RuntimeException("Не удалось установить id пользователю", e);
+        }
     }
 }
 ===== ./src/main/resources/data.sql =====
@@ -1042,8 +1905,7 @@ WHERE NOT EXISTS (
 
 <form id="activityForm"
       th:action="@{/provider/activities/{id}(id=${activity.id})}"
-      method="post"
-      enctype="multipart/form-data">
+      method="post">
 
     <div>
         <label for="title">Название:</label>
@@ -1084,89 +1946,15 @@ WHERE NOT EXISTS (
                th:value="${activity.durationMinutes}"
                required>
     </div>
-
-    <div style="margin-top: 20px;">
-        <p><strong>Необязательные материалы:</strong></p>
-
-        <div style="margin-top: 10px;">
-            <label for="document">Загрузить текстовый или PDF файл:</label>
-            <input id="document" type="file" name="document" accept=".txt,.pdf">
-        </div>
-
-        <div style="margin-top: 10px;">
-            <label for="video">Загрузить видео файл:</label>
-            <input id="video" type="file" name="video" accept="video/*">
-        </div>
-    </div>
-
-    <h3 style="margin-top: 30px;">Доступные термины</h3>
-
-    <table id="appointmentsTable" style="margin-top: 10px;">
-        <thead>
-            <tr>
-                <th>Дата</th>
-                <th>Начало</th>
-                <th>Конец</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="appointment : ${availableAppointments}"
-                th:attr="data-existing-id=${appointment.id}">
-                <td th:text="${#temporals.format(appointment.startTime, 'dd.MM.yyyy')}"></td>
-                <td th:text="${#temporals.format(appointment.startTime, 'HH:mm')}"></td>
-                <td th:text="${#temporals.format(appointment.endTime, 'HH:mm')}"></td>
-                <td>
-                    <button type="button"
-                            th:attr="onclick='removeExistingAppointment(this,' + ${appointment.id} + ')'">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div style="margin-top: 20px;">
-        <label for="newAppointmentDate">Дата:</label>
-        <input id="newAppointmentDate" type="date">
-    </div>
-
-    <div style="margin-top: 10px;">
-        <label>Время начала:</label>
-
-        <select id="newAppointmentHour">
-            <option value="">Час</option>
-            <option th:each="h : ${#numbers.sequence(0,23)}"
-                    th:value="${h < 10 ? '0' + h : h}"
-                    th:text="${h < 10 ? '0' + h : h}">
-            </option>
-        </select>
-
-        <span>:</span>
-
-        <select id="newAppointmentMinute">
-            <option value="">Мин</option>
-            <option value="00">00</option>
-            <option value="15">15</option>
-            <option value="30">30</option>
-            <option value="45">45</option>
-        </select>
-
-        <button type="button" onclick="addDraftAppointment()" style="margin-left: 10px;">
-            Добавить
-        </button>
-    </div>
-
-    <div id="hiddenAppointments"></div>
 </form>
 
-<div style="margin-top: 30px;">
+<div style="margin-top: 20px;">
     <button type="submit" form="activityForm">Сохранить</button>
 
     <button type="button"
             onclick="window.location.href='/provider'"
             style="margin-left: 10px;">
-        Отменить
+        Назад
     </button>
 
     <form th:action="@{/provider/activities/{id}/delete(id=${activity.id})}"
@@ -1177,80 +1965,195 @@ WHERE NOT EXISTS (
     </form>
 </div>
 
-<script>
-    function addHiddenInput(name, value, group) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        input.dataset.group = group;
-        document.getElementById('hiddenAppointments').appendChild(input);
-    }
+<hr style="margin: 30px 0;">
 
-    function removeHiddenGroup(group) {
-        document.querySelectorAll('[data-group="' + group + '"]').forEach(el => el.remove());
-    }
+<h3>Базовые правила расписания</h3>
 
-    function addDraftAppointment() {
-        const date = document.getElementById('newAppointmentDate').value;
-        const hour = document.getElementById('newAppointmentHour').value;
-        const minute = document.getElementById('newAppointmentMinute').value;
-        const duration = parseInt(document.getElementById('durationMinutes').value, 10);
+<div th:if="${#lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <p>Правила расписания пока не добавлены.</p>
+</div>
 
-        if (!date || !hour || !minute || !duration) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleRules)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>День недели</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Ближайшие даты</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="rule : ${scheduleRules}">
+            <td th:text="${rule.dayOfWeek}"></td>
+            <td th:text="${#temporals.format(rule.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(rule.endTime, 'HH:mm')}"></td>
+            <td>
+                <span>ближайшие даты: </span>
+                <span th:text="${rulePreviewDates[rule.id]}"></span>
+            </td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-rules/{ruleId}/delete(activityId=${activity.id}, ruleId=${rule.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить правило расписания?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        const start = new Date(date + 'T' + hour + ':' + minute + ':00');
-        const end = new Date(start.getTime() + duration * 60000);
+<div style="margin-top: 20px;">
+    <h4>Добавить правило</h4>
 
-        const group = 'new-' + Date.now();
+    <form th:action="@{/provider/activities/{id}/schedule-rules(id=${activity.id})}"
+          method="post">
 
-        addHiddenInput('newAppointmentDates', date, group);
-        addHiddenInput('newAppointmentHours', hour, group);
-        addHiddenInput('newAppointmentMinutes', minute, group);
+        <div>
+            <label for="dayOfWeek">День недели:</label>
+            <select id="dayOfWeek" name="dayOfWeek" required>
+                <option value="">Выберите день</option>
+                <option value="MONDAY">MONDAY</option>
+                <option value="TUESDAY">TUESDAY</option>
+                <option value="WEDNESDAY">WEDNESDAY</option>
+                <option value="THURSDAY">THURSDAY</option>
+                <option value="FRIDAY">FRIDAY</option>
+                <option value="SATURDAY">SATURDAY</option>
+                <option value="SUNDAY">SUNDAY</option>
+            </select>
+        </div>
 
-        const row = document.createElement('tr');
-        row.dataset.group = group;
+        <div style="margin-top: 10px;">
+            <label for="ruleStartTime">Начало:</label>
+            <input id="ruleStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
 
-        const formattedDate = start.toLocaleDateString('ru-RU');
-        const startText = hour + ':' + minute;
-        const endHour = String(end.getHours()).padStart(2, '0');
-        const endMinute = String(end.getMinutes()).padStart(2, '0');
-        const endText = endHour + ':' + endMinute;
+        <div style="margin-top: 10px;">
+            <label for="ruleEndTime">Конец:</label>
+            <input id="ruleEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
 
-        row.innerHTML =
-            '<td>' + formattedDate + '</td>' +
-            '<td>' + startText + '</td>' +
-            '<td>' + endText + '</td>' +
-            '<td><button type="button" onclick="removeDraftAppointment(this, \'' + group + '\')">Удалить</button></td>';
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить правило</button>
+        </div>
+    </form>
+</div>
 
-        document.querySelector('#appointmentsTable tbody').appendChild(row);
+<hr style="margin: 30px 0;">
 
-        document.getElementById('newAppointmentDate').value = '';
-        document.getElementById('newAppointmentHour').value = '';
-        document.getElementById('newAppointmentMinute').value = '';
-    }
+<h3>Корректировки</h3>
 
-    function removeDraftAppointment(button, group) {
-        button.closest('tr').remove();
-        removeHiddenGroup(group);
-    }
+<div th:if="${scheduleOverrideError}" style="margin-top: 10px;">
+    <p th:text="${scheduleOverrideError}" style="color: red;"></p>
+</div>
 
-    function removeExistingAppointment(button, appointmentId) {
-        const group = 'delete-' + appointmentId;
+<div th:if="${#lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <p>Корректировки пока не добавлены.</p>
+</div>
 
-        if (document.querySelector('[data-group="' + group + '"]')) {
-            return;
-        }
+<table th:if="${not #lists.isEmpty(scheduleOverrides)}" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Тип</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="scheduleOverride : ${scheduleOverrides}">
+            <td th:text="${#temporals.format(scheduleOverride.date, 'dd.MM.yyyy')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.startTime, 'HH:mm')}"></td>
+            <td th:text="${#temporals.format(scheduleOverride.endTime, 'HH:mm')}"></td>
+            <td th:text="${scheduleOverride.type}"></td>
+            <td>
+                <form th:action="@{/provider/activities/{activityId}/schedule-overrides/{overrideId}/delete(activityId=${activity.id}, overrideId=${scheduleOverride.id})}"
+                      method="post"
+                      onsubmit="return confirm('Удалить корректировку?');">
+                    <button type="submit">Удалить</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-        addHiddenInput('appointmentsToDelete', appointmentId, group);
-        button.closest('tr').remove();
-    }
-</script>
+<div style="margin-top: 20px;">
+    <h4>Добавить корректировку</h4>
+
+    <form th:action="@{/provider/activities/{id}/schedule-overrides(id=${activity.id})}"
+          method="post">
+
+        <div>
+            <label for="overrideDate">Дата:</label>
+            <input id="overrideDate"
+                   type="date"
+                   name="date"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideStartTime">Начало:</label>
+            <input id="overrideStartTime"
+                   type="time"
+                   name="startTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideEndTime">Конец:</label>
+            <input id="overrideEndTime"
+                   type="time"
+                   name="endTime"
+                   required>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label for="overrideType">Тип:</label>
+            <select id="overrideType" name="type" required>
+                <option value="">Выберите тип</option>
+                <option value="AVAILABLE">Доступно</option>
+                <option value="UNAVAILABLE">Недоступно</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button type="submit">Добавить корректировку</button>
+        </div>
+    </form>
+</div>
 
 </body>
 </html>
+===== ./src/main/java/com/careflow/repository/ActivityScheduleOverrideRepository.java =====
+package com.careflow.repository;
+
+import com.careflow.model.ActivityScheduleOverride;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+public interface ActivityScheduleOverrideRepository extends JpaRepository<ActivityScheduleOverride, Long> {
+
+    List<ActivityScheduleOverride> findByActivityIdAndDate(Long activityId, LocalDate date);
+
+    List<ActivityScheduleOverride> findByActivityIdOrderByDateAscStartTimeAsc(Long activityId);
+
+    boolean existsByActivityIdAndDateAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long activityId,
+            LocalDate date,
+            LocalTime end,
+            LocalTime start
+    );
+}
 ===== ./src/main/java/com/careflow/repository/AppointmentRepository.java =====
 package com.careflow.repository;
 
@@ -1287,6 +2190,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             LocalDateTime endTime,
             LocalDateTime startTime
     );
+}
+===== ./src/main/java/com/careflow/repository/ActivityScheduleRuleRepository.java =====
+package com.careflow.repository;
+
+import com.careflow.model.ActivityScheduleRule;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.DayOfWeek;
+import java.util.List;
+
+public interface ActivityScheduleRuleRepository extends JpaRepository<ActivityScheduleRule, Long> {
+
+    List<ActivityScheduleRule> findByActivityIdAndDayOfWeekAndActiveTrue(Long activityId, DayOfWeek dayOfWeek);
+
+    List<ActivityScheduleRule> findByActivityId(Long activityId);
 }
 ===== ./src/main/java/com/careflow/repository/ProviderInvitationRepository.java =====
 package com.careflow.repository;
@@ -1342,10 +2260,15 @@ import com.careflow.service.AdminService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class AdminController {
+
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String ADMIN_VIEW = "admin";
 
     private final AdminService adminService;
     private final SessionUserValidator sessionValidator;
@@ -1358,35 +2281,61 @@ public class AdminController {
 
     @GetMapping("/admin")
     public String showAdminPage(HttpSession session, Model model) {
-        User user = sessionValidator.getValidUser(session, UserRole.ADMIN);
-        if (user == null) return "redirect:/auth/login";
+        User admin = getAdminOrNull(session);
+        if (admin == null) {
+            return LOGIN_REDIRECT;
+        }
 
-        model.addAttribute("currentUser", user);
-        model.addAttribute("providers", adminService.getProviders());
-        return "admin";
+        return renderAdminPage(model, admin, null, null);
     }
 
     @PostMapping("/admin/providers/invite")
     public String inviteProvider(@RequestParam String email,
                                  HttpSession session,
                                  Model model) {
-
-        User user = sessionValidator.getValidUser(session, UserRole.ADMIN);
-        if (user == null) return "redirect:/auth/login";
+        User admin = getAdminOrNull(session);
+        if (admin == null) {
+            return LOGIN_REDIRECT;
+        }
 
         boolean created = adminService.createProviderInvitation(email);
 
-        model.addAttribute("currentUser", user);
-        model.addAttribute("providers", adminService.getProviders());
-
-        if (!created) {
-            model.addAttribute("error",
-                    "Приглашение уже существует или пользователь с таким email уже зарегистрирован");
-        } else {
-            model.addAttribute("message", "Приглашение создано");
+        if (created) {
+            return renderAdminPage(model, admin, null, "Приглашение создано");
         }
 
-        return "admin";
+        return renderAdminPage(
+                model,
+                admin,
+                "Приглашение уже существует или пользователь с таким email уже зарегистрирован",
+                null
+        );
+    }
+
+    private User getAdminOrNull(HttpSession session) {
+        return sessionValidator.getValidUser(session, UserRole.ADMIN);
+    }
+
+    private String renderAdminPage(Model model,
+                                   User admin,
+                                   String error,
+                                   String message) {
+        populateAdminModel(model, admin);
+
+        if (error != null) {
+            model.addAttribute("error", error);
+        }
+
+        if (message != null) {
+            model.addAttribute("message", message);
+        }
+
+        return ADMIN_VIEW;
+    }
+
+    private void populateAdminModel(Model model, User admin) {
+        model.addAttribute("currentUser", admin);
+        model.addAttribute("providers", adminService.getProviders());
     }
 }
 ===== ./src/main/java/com/careflow/controller/ClientController.java =====
@@ -1403,6 +2352,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ClientController {
 
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String CLIENT_VIEW = "client";
+
     private final SessionUserValidator sessionValidator;
 
     public ClientController(SessionUserValidator sessionValidator) {
@@ -1411,11 +2363,21 @@ public class ClientController {
 
     @GetMapping("/client")
     public String showClientPage(HttpSession session, Model model) {
-        User user = sessionValidator.getValidUser(session, UserRole.CLIENT);
-        if (user == null) return "redirect:/auth/login";
+        User client = getClientOrNull(session);
+        if (client == null) {
+            return LOGIN_REDIRECT;
+        }
 
-        model.addAttribute("currentUser", user);
-        return "client";
+        populateClientModel(model, client);
+        return CLIENT_VIEW;
+    }
+
+    private User getClientOrNull(HttpSession session) {
+        return sessionValidator.getValidUser(session, UserRole.CLIENT);
+    }
+
+    private void populateClientModel(Model model, User client) {
+        model.addAttribute("currentUser", client);
     }
 }
 ===== ./src/main/java/com/careflow/controller/ProviderActivityController.java =====
@@ -1423,35 +2385,48 @@ package com.careflow.controller;
 
 import com.careflow.controller.auth.SessionUserValidator;
 import com.careflow.model.Activity;
-import com.careflow.model.Appointment;
+import com.careflow.model.ActivityScheduleOverride;
+import com.careflow.model.ActivityScheduleRule;
+import com.careflow.model.ScheduleOverrideType;
 import com.careflow.model.User;
-import com.careflow.model.UserRole;
+import com.careflow.service.ActivityScheduleOverrideService;
+import com.careflow.service.ActivitySchedulePreviewService;
+import com.careflow.service.ActivityScheduleRuleService;
 import com.careflow.service.ActivityService;
-import com.careflow.service.AppointmentService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
 @Controller
 public class ProviderActivityController {
 
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String PROVIDER_REDIRECT = "redirect:/provider";
+    private static final String PROVIDER_ACTIVITY_EDIT_VIEW = "provider-activity-edit";
+
     private final SessionUserValidator sessionValidator;
     private final ActivityService activityService;
-    private final AppointmentService appointmentService;
+    private final ActivityScheduleRuleService activityScheduleRuleService;
+    private final ActivityScheduleOverrideService activityScheduleOverrideService;
+    private final ActivitySchedulePreviewService activitySchedulePreviewService;
 
     public ProviderActivityController(SessionUserValidator sessionValidator,
                                       ActivityService activityService,
-                                      AppointmentService appointmentService) {
+                                      ActivityScheduleRuleService activityScheduleRuleService,
+                                      ActivityScheduleOverrideService activityScheduleOverrideService,
+                                      ActivitySchedulePreviewService activitySchedulePreviewService) {
         this.sessionValidator = sessionValidator;
         this.activityService = activityService;
-        this.appointmentService = appointmentService;
+        this.activityScheduleRuleService = activityScheduleRuleService;
+        this.activityScheduleOverrideService = activityScheduleOverrideService;
+        this.activitySchedulePreviewService = activitySchedulePreviewService;
     }
 
     @PostMapping("/provider/activities")
@@ -1461,20 +2436,17 @@ public class ProviderActivityController {
                                  @RequestParam Integer durationMinutes,
                                  HttpSession session) {
 
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
         Activity activity = new Activity();
-        activity.setProvider(user);
-        activity.setTitle(title);
-        activity.setDescription(description);
-        activity.setPrice(price);
-        activity.setDurationMinutes(durationMinutes);
+        activity.setProvider(provider);
+        activity.updateDetails(title, description, price, durationMinutes);
 
         activityService.saveActivity(activity);
-        return "redirect:/provider";
+        return PROVIDER_REDIRECT;
     }
 
     @GetMapping("/provider/activities/{id}")
@@ -1482,22 +2454,18 @@ public class ProviderActivityController {
                                        HttpSession session,
                                        Model model) {
 
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
-        Activity activity = activityService.findActivityById(id);
-        if (!activity.getProvider().getId().equals(user.getId())) {
-            return "redirect:/provider";
+        Activity activity = getOwnedActivityOrNull(id, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
         }
 
-        model.addAttribute("currentUser", user);
-        model.addAttribute("activity", activity);
-        model.addAttribute("availableAppointments",
-                appointmentService.findAvailableAppointmentsByActivityId(activity.getId()));
-
-        return "provider-activity-edit";
+        populateEditModel(model, provider, activity);
+        return PROVIDER_ACTIVITY_EDIT_VIEW;
     }
 
     @PostMapping("/provider/activities/{id}")
@@ -1506,88 +2474,193 @@ public class ProviderActivityController {
                                  @RequestParam String description,
                                  @RequestParam BigDecimal price,
                                  @RequestParam Integer durationMinutes,
-                                 @RequestParam(required = false) List<String> newAppointmentDates,
-                                 @RequestParam(required = false) List<String> newAppointmentHours,
-                                 @RequestParam(required = false) List<String> newAppointmentMinutes,
-                                 @RequestParam(required = false) List<Long> appointmentsToDelete,
                                  HttpSession session) {
 
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
-        Activity activity = activityService.findActivityById(id);
-        if (!activity.getProvider().getId().equals(user.getId())) {
-            return "redirect:/provider";
+        Activity activity = getOwnedActivityOrNull(id, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
         }
 
-        activity.setTitle(title);
-        activity.setDescription(description);
-        activity.setPrice(price);
-        activity.setDurationMinutes(durationMinutes);
+        activity.updateDetails(title, description, price, durationMinutes);
         activityService.saveActivity(activity);
 
-        if (appointmentsToDelete != null) {
-            for (Long appointmentId : appointmentsToDelete) {
-                Appointment appointment = appointmentService.findAppointmentById(appointmentId);
-
-                if (appointment.getActivity().getId().equals(activity.getId())) {
-                    appointmentService.deleteAppointmentById(appointmentId);
-                }
-            }
-        }
-
-        if (newAppointmentDates != null && newAppointmentHours != null && newAppointmentMinutes != null) {
-            for (int i = 0; i < newAppointmentDates.size(); i++) {
-                LocalDate date = LocalDate.parse(newAppointmentDates.get(i));
-                LocalTime time = LocalTime.parse(newAppointmentHours.get(i) + ":" + newAppointmentMinutes.get(i));
-                LocalDateTime startTime = LocalDateTime.of(date, time);
-
-                if (startTime.isBefore(LocalDateTime.now())) {
-                    continue;
-                }
-
-                LocalDateTime endTime = startTime.plusMinutes(activity.getDurationMinutes());
-
-                boolean exists = appointmentService.existsOverlappingAppointment(
-                        activity.getId(),
-                        startTime,
-                        endTime
-                );
-
-                if (exists) {
-                    continue;
-                }
-
-                Appointment appointment = new Appointment();
-                appointment.setActivity(activity);
-                appointment.setStartTime(startTime);
-                appointment.setEndTime(endTime);
-
-                appointmentService.saveAppointment(appointment);
-            }
-        }
-
-        return "redirect:/provider";
+        return redirectToActivity(activity.getId());
     }
 
     @PostMapping("/provider/activities/{id}/delete")
     public String deleteActivity(@PathVariable Long id,
                                  HttpSession session) {
 
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
-        Activity activity = activityService.findActivityById(id);
-        if (!activity.getProvider().getId().equals(user.getId())) {
-            return "redirect:/provider";
+        Activity activity = getOwnedActivityOrNull(id, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
         }
 
-        activityService.deleteActivityById(id);
-        return "redirect:/provider";
+        activityService.deleteActivityById(activity.getId());
+        return PROVIDER_REDIRECT;
+    }
+
+    @PostMapping("/provider/activities/{id}/schedule-rules")
+    public String createScheduleRule(@PathVariable Long id,
+                                     @RequestParam DayOfWeek dayOfWeek,
+                                     @RequestParam LocalTime startTime,
+                                     @RequestParam LocalTime endTime,
+                                     HttpSession session) {
+
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
+        }
+
+        Activity activity = getOwnedActivityOrNull(id, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
+        }
+
+        ActivityScheduleRule rule = new ActivityScheduleRule();
+        rule.setActivity(activity);
+        rule.setDayOfWeek(dayOfWeek);
+        rule.setStartTime(startTime);
+        rule.setEndTime(endTime);
+        rule.setActive(true);
+
+        activityScheduleRuleService.create(rule);
+        return redirectToActivity(activity.getId());
+    }
+
+    @PostMapping("/provider/activities/{activityId}/schedule-rules/{ruleId}/delete")
+    public String deleteScheduleRule(@PathVariable Long activityId,
+                                     @PathVariable Long ruleId,
+                                     HttpSession session) {
+
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
+        }
+
+        Activity activity = getOwnedActivityOrNull(activityId, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
+        }
+
+        ActivityScheduleRule rule = activityScheduleRuleService.getById(ruleId);
+        if (rule == null) {
+            return redirectToActivity(activity.getId());
+        }
+
+        if (rule.getActivity() == null || !rule.getActivity().getId().equals(activity.getId())) {
+            return PROVIDER_REDIRECT;
+        }
+
+        activityScheduleRuleService.delete(ruleId);
+        return redirectToActivity(activity.getId());
+    }
+
+    @PostMapping("/provider/activities/{id}/schedule-overrides")
+    public String createScheduleOverride(@PathVariable Long id,
+                                         @RequestParam LocalDate date,
+                                         @RequestParam LocalTime startTime,
+                                         @RequestParam LocalTime endTime,
+                                         @RequestParam ScheduleOverrideType type,
+                                         HttpSession session,
+                                         Model model) {
+
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
+        }
+
+        Activity activity = getOwnedActivityOrNull(id, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
+        }
+
+        ActivityScheduleOverride scheduleOverride = new ActivityScheduleOverride();
+        scheduleOverride.setActivity(activity);
+        scheduleOverride.setDate(date);
+        scheduleOverride.setStartTime(startTime);
+        scheduleOverride.setEndTime(endTime);
+        scheduleOverride.setType(type);
+
+        try {
+            activityScheduleOverrideService.create(scheduleOverride);
+            return redirectToActivity(activity.getId());
+        } catch (IllegalArgumentException exception) {
+            populateEditModel(model, provider, activity);
+            model.addAttribute("scheduleOverrideError", exception.getMessage());
+            return PROVIDER_ACTIVITY_EDIT_VIEW;
+        }
+    }
+
+    @PostMapping("/provider/activities/{activityId}/schedule-overrides/{overrideId}/delete")
+    public String deleteScheduleOverride(@PathVariable Long activityId,
+                                         @PathVariable Long overrideId,
+                                         HttpSession session) {
+
+        User provider = getValidProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
+        }
+
+        Activity activity = getOwnedActivityOrNull(activityId, provider);
+        if (activity == null) {
+            return PROVIDER_REDIRECT;
+        }
+
+        ActivityScheduleOverride scheduleOverride = activityScheduleOverrideService.getById(overrideId);
+        if (scheduleOverride == null) {
+            return redirectToActivity(activity.getId());
+        }
+
+        if (scheduleOverride.getActivity() == null
+                || !scheduleOverride.getActivity().getId().equals(activity.getId())) {
+            return PROVIDER_REDIRECT;
+        }
+
+        activityScheduleOverrideService.delete(overrideId);
+        return redirectToActivity(activity.getId());
+    }
+
+    private User getValidProviderOrNull(HttpSession session) {
+        return sessionValidator.getValidProvider(session);
+    }
+
+    private Activity getOwnedActivityOrNull(Long activityId, User provider) {
+        Activity activity = activityService.findActivityById(activityId);
+
+        if (activity == null) {
+            return null;
+        }
+
+        return activity.belongsTo(provider) ? activity : null;
+    }
+
+    private void populateEditModel(Model model, User provider, Activity activity) {
+        model.addAttribute("currentUser", provider);
+        model.addAttribute("activity", activity);
+
+        List<ActivityScheduleRule> scheduleRules =
+                activityScheduleRuleService.getByActivity(activity.getId());
+
+        model.addAttribute("scheduleRules", scheduleRules);
+        model.addAttribute("scheduleOverrides",
+                activityScheduleOverrideService.getByActivity(activity.getId()));
+        model.addAttribute("rulePreviewDates",
+                activitySchedulePreviewService.buildRulePreviewDates(scheduleRules));
+    }
+
+    private String redirectToActivity(Long activityId) {
+        return "redirect:/provider/activities/" + activityId;
     }
 }
 ===== ./src/main/java/com/careflow/controller/auth/SessionUserValidator.java =====
@@ -1615,6 +2688,18 @@ public class SessionUserValidator {
         }
 
         return user;
+    }
+
+    public User getValidAdmin(HttpSession session) {
+        return getValidUser(session, UserRole.ADMIN);
+    }
+
+    public User getValidProvider(HttpSession session) {
+        return getValidUser(session, UserRole.PROVIDER);
+    }
+
+    public User getValidClient(HttpSession session) {
+        return getValidUser(session, UserRole.CLIENT);
     }
 
     public void save(HttpSession session, User user) {
@@ -2010,6 +3095,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ProviderController {
 
+    private static final String LOGIN_REDIRECT = "redirect:/auth/login";
+    private static final String PROVIDER_VIEW = "provider";
+
     private final SessionUserValidator sessionValidator;
     private final ActivityService activityService;
 
@@ -2021,14 +3109,22 @@ public class ProviderController {
 
     @GetMapping("/provider")
     public String showProviderPage(HttpSession session, Model model) {
-        User user = sessionValidator.getValidUser(session, UserRole.PROVIDER);
-        if (user == null) {
-            return "redirect:/auth/login";
+        User provider = getProviderOrNull(session);
+        if (provider == null) {
+            return LOGIN_REDIRECT;
         }
 
-        model.addAttribute("currentUser", user);
-        model.addAttribute("activities", activityService.findActivitiesByProviderId(user.getId()));
-        return "provider";
+        populateProviderModel(model, provider);
+        return PROVIDER_VIEW;
+    }
+
+    private User getProviderOrNull(HttpSession session) {
+        return sessionValidator.getValidUser(session, UserRole.PROVIDER);
+    }
+
+    private void populateProviderModel(Model model, User provider) {
+        model.addAttribute("currentUser", provider);
+        model.addAttribute("activities", activityService.findActivitiesByProviderId(provider.getId()));
     }
 }
 ===== ./src/main/java/com/careflow/controller/UserController.java =====
@@ -2162,21 +3258,10 @@ public class ProviderInvitation {
 ===== ./src/main/java/com/careflow/model/Activity.java =====
 package com.careflow.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.DecimalMin;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -2188,23 +3273,20 @@ public class Activity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Provider must not be null")
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "provider_id", nullable = false)
     private User provider;
 
     @NotBlank(message = "Title must not be blank")
-    @Size(min = 3, max = 100, message = "Title must be between 3 and 100 characters")
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false)
     private String title;
 
     @NotBlank(message = "Description must not be blank")
-    @Size(max = 1000, message = "Description must not exceed 1000 characters")
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, length = 2000)
     private String description;
 
     @NotNull(message = "Price must not be null")
-    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    @Positive(message = "Price must be greater than 0")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
@@ -2232,6 +3314,55 @@ public class Activity {
         this.price = price;
         this.durationMinutes = durationMinutes;
         this.status = status;
+    }
+
+    public boolean belongsTo(User provider) {
+        if (provider == null || this.provider == null) {
+            return false;
+        }
+
+        Long currentProviderId = this.provider.getId();
+        Long requestedProviderId = provider.getId();
+
+        if (currentProviderId == null || requestedProviderId == null) {
+            return false;
+        }
+
+        return currentProviderId.equals(requestedProviderId);
+    }
+
+    public boolean isOwnedBy(Long providerId) {
+        if (providerId == null || provider == null || provider.getId() == null) {
+            return false;
+        }
+
+        return provider.getId().equals(providerId);
+    }
+
+    public boolean isActive() {
+        return status == ActivityStatus.ACTIVE;
+    }
+
+    public boolean isInactive() {
+        return status == ActivityStatus.INACTIVE;
+    }
+
+    public void updateDetails(String title,
+                              String description,
+                              BigDecimal price,
+                              Integer durationMinutes) {
+        this.title = title;
+        this.description = description;
+        this.price = price;
+        this.durationMinutes = durationMinutes;
+    }
+
+    public void activate() {
+        this.status = ActivityStatus.ACTIVE;
+    }
+
+    public void deactivate() {
+        this.status = ActivityStatus.INACTIVE;
     }
 
     public Long getId() {
@@ -2305,6 +3436,122 @@ public enum AppointmentStatus {
     AWAITING_PAYMENT,
     CONFIRMED,
     COMPLETED
+}
+===== ./src/main/java/com/careflow/model/ActivityScheduleRule.java =====
+package com.careflow.model;
+
+import jakarta.persistence.*;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "activity_schedule_rules")
+public class ActivityScheduleRule {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(optional = false)
+    private Activity activity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DayOfWeek dayOfWeek;
+
+    @Column(nullable = false)
+    private java.time.LocalTime startTime;
+
+    @Column(nullable = false)
+    private java.time.LocalTime endTime;
+
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @PrePersist
+    @PreUpdate
+    private void validate() {
+        if (!hasValidTimeRange()) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
+    }
+
+    public TimeInterval toInterval() {
+        return TimeInterval.of(startTime, endTime);
+    }
+
+    public boolean hasValidTimeRange() {
+        return toInterval().isValid();
+    }
+
+    public boolean isOnDay(DayOfWeek otherDayOfWeek) {
+        return dayOfWeek != null && dayOfWeek.equals(otherDayOfWeek);
+    }
+
+    public boolean appliesTo(LocalDate date) {
+        return date != null
+                && dayOfWeek != null
+                && dayOfWeek.equals(date.getDayOfWeek());
+    }
+
+    public boolean overlaps(ActivityScheduleRule other) {
+        if (other == null) {
+            return false;
+        }
+
+        if (!isOnDay(other.getDayOfWeek())) {
+            return false;
+        }
+
+        return toInterval().intersects(other.toInterval());
+    }
+
+    // ===== GETTERS / SETTERS =====
+
+    public Long getId() {
+        return id;
+    }
+
+    public Activity getActivity() {
+        return activity;
+    }
+
+    public void setActivity(Activity activity) {
+        this.activity = activity;
+    }
+
+    public DayOfWeek getDayOfWeek() {
+        return dayOfWeek;
+    }
+
+    public void setDayOfWeek(DayOfWeek dayOfWeek) {
+        this.dayOfWeek = dayOfWeek;
+    }
+
+    public java.time.LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(java.time.LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public java.time.LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(java.time.LocalTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 }
 ===== ./src/main/java/com/careflow/model/Appointment.java =====
 package com.careflow.model;
@@ -2500,6 +3747,184 @@ public class User {
         this.role = role;
     }
 }
+===== ./src/main/java/com/careflow/model/ScheduleOverrideType.java =====
+package com.careflow.model;
+
+public enum ScheduleOverrideType {
+    AVAILABLE,
+    UNAVAILABLE
+}
+===== ./src/main/java/com/careflow/model/TimeInterval.java =====
+package com.careflow.model;
+
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.Objects;
+
+public class TimeInterval {
+
+    private final LocalTime start;
+    private final LocalTime end;
+
+    public TimeInterval(LocalTime start, LocalTime end) {
+        this.start = start;
+        this.end = end;
+    }
+
+    public static TimeInterval of(LocalTime start, LocalTime end) {
+        return new TimeInterval(start, end);
+    }
+
+    public boolean isValid() {
+        return start != null
+                && end != null
+                && start.isBefore(end);
+    }
+
+    public boolean intersects(TimeInterval other) {
+        Objects.requireNonNull(other, "other interval must not be null");
+
+        if (!isValid() || !other.isValid()) {
+            return false;
+        }
+
+        return start.isBefore(other.end) && end.isAfter(other.start);
+    }
+
+    public boolean contains(LocalTime time) {
+        if (!isValid() || time == null) {
+            return false;
+        }
+
+        return !time.isBefore(start) && time.isBefore(end);
+    }
+
+    public Duration duration() {
+        if (!isValid()) {
+            return Duration.ZERO;
+        }
+
+        return Duration.between(start, end);
+    }
+
+    public LocalTime getStart() {
+        return start;
+    }
+
+    public LocalTime getEnd() {
+        return end;
+    }
+}
+===== ./src/main/java/com/careflow/model/ActivityScheduleOverride.java =====
+package com.careflow.model;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+@Entity
+@Table(name = "activity_schedule_overrides")
+public class ActivityScheduleOverride {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(optional = false)
+    private Activity activity;
+
+    @Column(nullable = false)
+    private LocalDate date;
+
+    @Column(nullable = false)
+    private LocalTime startTime;
+
+    @Column(nullable = false)
+    private LocalTime endTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ScheduleOverrideType type;
+
+    @PrePersist
+    @PreUpdate
+    private void validate() {
+        if (!hasValidTimeRange()) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
+    }
+
+    public TimeInterval toInterval() {
+        return TimeInterval.of(startTime, endTime);
+    }
+
+    public boolean hasValidTimeRange() {
+        return toInterval().isValid();
+    }
+
+    public boolean isOnDate(LocalDate otherDate) {
+        return date != null && date.equals(otherDate);
+    }
+
+    public boolean overlaps(ActivityScheduleOverride other) {
+        if (other == null) {
+            return false;
+        }
+
+        if (!isOnDate(other.getDate())) {
+            return false;
+        }
+
+        return toInterval().intersects(other.toInterval());
+    }
+
+    // ===== GETTERS / SETTERS =====
+
+    public Long getId() {
+        return id;
+    }
+
+    public Activity getActivity() {
+        return activity;
+    }
+
+    public void setActivity(Activity activity) {
+        this.activity = activity;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public ScheduleOverrideType getType() {
+        return type;
+    }
+
+    public void setType(ScheduleOverrideType type) {
+        this.type = type;
+    }
+}
 ===== ./src/main/java/com/careflow/model/ActivityStatus.java =====
 package com.careflow.model;
 
@@ -2557,6 +3982,57 @@ public class AdminService {
         invitation.setToken(UUID.randomUUID().toString());
         invitation.setUsed(false);
         return invitation;
+    }
+}
+===== ./src/main/java/com/careflow/service/ActivityScheduleOverrideService.java =====
+package com.careflow.service;
+
+import com.careflow.model.ActivityScheduleOverride;
+import com.careflow.repository.ActivityScheduleOverrideRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Service
+public class ActivityScheduleOverrideService {
+
+    private final ActivityScheduleOverrideRepository repository;
+
+    public ActivityScheduleOverrideService(ActivityScheduleOverrideRepository repository) {
+        this.repository = repository;
+    }
+
+    public ActivityScheduleOverride create(ActivityScheduleOverride override) {
+
+        boolean exists = repository.existsByActivityIdAndDateAndStartTimeLessThanAndEndTimeGreaterThan(
+                override.getActivity().getId(),
+                override.getDate(),
+                override.getEndTime(),
+                override.getStartTime()
+        );
+
+        if (exists) {
+            throw new IllegalArgumentException("Override intersects existing override");
+        }
+
+        return repository.save(override);
+    }
+
+    public ActivityScheduleOverride getById(Long id) {
+        return repository.findById(id).orElse(null);
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+
+    public List<ActivityScheduleOverride> getByActivity(Long activityId) {
+        return repository.findByActivityIdOrderByDateAscStartTimeAsc(activityId);
+    }
+
+    public List<ActivityScheduleOverride> getByActivityAndDate(Long activityId, LocalDate date) {
+        return repository.findByActivityIdAndDate(activityId, date);
     }
 }
 ===== ./src/main/java/com/careflow/service/UserService.java =====
@@ -2649,6 +4125,40 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already exists: " + email);
         }
+    }
+}
+===== ./src/main/java/com/careflow/service/ActivityScheduleRuleService.java =====
+package com.careflow.service;
+
+import com.careflow.model.ActivityScheduleRule;
+import com.careflow.repository.ActivityScheduleRuleRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ActivityScheduleRuleService {
+
+    private final ActivityScheduleRuleRepository repository;
+
+    public ActivityScheduleRuleService(ActivityScheduleRuleRepository repository) {
+        this.repository = repository;
+    }
+
+    public ActivityScheduleRule create(ActivityScheduleRule rule) {
+        return repository.save(rule);
+    }
+
+    public ActivityScheduleRule getById(Long id) {
+        return repository.findById(id).orElse(null);
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+
+    public List<ActivityScheduleRule> getByActivity(Long activityId) {
+        return repository.findByActivityId(activityId);
     }
 }
 ===== ./src/main/java/com/careflow/service/AppointmentService.java =====
@@ -3114,6 +4624,136 @@ public class ProviderRegistrationService {
         public static RegistrationResult error(String message) {
             return new RegistrationResult(false, message);
         }
+    }
+}
+===== ./src/main/java/com/careflow/service/ActivitySchedulePreviewService.java =====
+package com.careflow.service;
+
+import com.careflow.model.ActivityScheduleRule;
+import org.springframework.stereotype.Service;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class ActivitySchedulePreviewService {
+
+    private static final DateTimeFormatter PREVIEW_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
+
+    public Map<Long, String> buildRulePreviewDates(List<ActivityScheduleRule> rules) {
+        Map<Long, String> previewDates = new LinkedHashMap<>();
+
+        for (ActivityScheduleRule rule : rules) {
+            previewDates.put(rule.getId(), buildNextDatesText(rule.getDayOfWeek(), 3));
+        }
+
+        return previewDates;
+    }
+
+    public String buildNextDatesText(DayOfWeek dayOfWeek, int count) {
+        LocalDate today = LocalDate.now();
+        StringBuilder result = new StringBuilder();
+
+        LocalDate currentDate = today;
+        int found = 0;
+
+        while (found < count) {
+            if (currentDate.getDayOfWeek().equals(dayOfWeek)) {
+                appendDate(result, currentDate);
+                found++;
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return result.toString();
+    }
+
+    private void appendDate(StringBuilder result, LocalDate date) {
+        if (!result.isEmpty()) {
+            result.append(", ");
+        }
+        result.append(date.format(PREVIEW_DATE_FORMATTER));
+    }
+}
+===== ./src/main/java/com/careflow/service/ActivityAvailabilityService.java =====
+package com.careflow.service;
+
+import com.careflow.model.Activity;
+import com.careflow.model.ScheduleOverrideType;
+import com.careflow.model.TimeInterval;
+import com.careflow.repository.ActivityScheduleOverrideRepository;
+import com.careflow.repository.ActivityScheduleRuleRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class ActivityAvailabilityService {
+
+    private final ActivityScheduleRuleRepository ruleRepository;
+    private final ActivityScheduleOverrideRepository overrideRepository;
+
+    public ActivityAvailabilityService(ActivityScheduleRuleRepository ruleRepository,
+                                       ActivityScheduleOverrideRepository overrideRepository) {
+        this.ruleRepository = ruleRepository;
+        this.overrideRepository = overrideRepository;
+    }
+
+    public List<TimeInterval> getAvailability(Activity activity, LocalDate date) {
+        List<TimeInterval> result = new ArrayList<>();
+
+        var rules = ruleRepository.findByActivityIdAndDayOfWeekAndActiveTrue(
+                activity.getId(),
+                date.getDayOfWeek()
+        );
+
+        for (var rule : rules) {
+            result.add(new TimeInterval(rule.getStartTime(), rule.getEndTime()));
+        }
+
+        var overrides = overrideRepository.findByActivityIdAndDate(activity.getId(), date);
+
+        for (var override : overrides) {
+            TimeInterval overrideInterval = new TimeInterval(
+                    override.getStartTime(),
+                    override.getEndTime()
+            );
+
+            if (override.getType() == ScheduleOverrideType.UNAVAILABLE) {
+                result = subtract(result, overrideInterval);
+            } else {
+                result.add(overrideInterval);
+            }
+        }
+
+        return result;
+    }
+
+    private List<TimeInterval> subtract(List<TimeInterval> base, TimeInterval blocked) {
+        List<TimeInterval> result = new ArrayList<>();
+
+        for (TimeInterval interval : base) {
+            if (!interval.intersects(blocked)) {
+                result.add(interval);
+                continue;
+            }
+
+            if (interval.getStart().isBefore(blocked.getStart())) {
+                result.add(new TimeInterval(interval.getStart(), blocked.getStart()));
+            }
+
+            if (interval.getEnd().isAfter(blocked.getEnd())) {
+                result.add(new TimeInterval(blocked.getEnd(), interval.getEnd()));
+            }
+        }
+
+        return result;
     }
 }
 ===== ./src/main/java/com/careflow/exception/UserNotFoundException.java =====

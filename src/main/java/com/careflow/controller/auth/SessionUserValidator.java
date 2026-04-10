@@ -24,6 +24,18 @@ public class SessionUserValidator {
         return user;
     }
 
+    public User getValidAdmin(HttpSession session) {
+        return getValidUser(session, UserRole.ADMIN);
+    }
+
+    public User getValidProvider(HttpSession session) {
+        return getValidUser(session, UserRole.PROVIDER);
+    }
+
+    public User getValidClient(HttpSession session) {
+        return getValidUser(session, UserRole.CLIENT);
+    }
+
     public void save(HttpSession session, User user) {
         session.setAttribute(SESSION_USER, user);
     }
