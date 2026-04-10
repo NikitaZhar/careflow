@@ -42,5 +42,15 @@ refactor: extract preview date logic from ProviderActivityController
 - Improved adherence to Clean Code and SOLID principles
 - All tests passing
 
+refactor: comprehensive clean code and SOLID improvements
+- Centralized time logic with TimeInterval
+- Integrated schedule entities with domain value objects
+- Moved business rules into Activity entity
+- Enhanced SessionUserValidator with role-specific methods
+- Simplified ProviderActivityController
+- Extracted preview date logic into ActivitySchedulePreviewService
+- Removed code duplication across controllers
+- Added comprehensive unit and integration tests
+- Preserved existing behavior (all tests passing)
 
 
