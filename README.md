@@ -35,4 +35,12 @@ refactor: enhance SessionUserValidator with role-specific methods
 - Improved readability and adherence to Clean Code and SOLID principles
 - All tests passing
 
+refactor: extract preview date logic from ProviderActivityController
+- Introduced ActivitySchedulePreviewService
+- Moved date preview and formatting logic to dedicated service
+- Simplified ProviderActivityController responsibilities
+- Improved adherence to Clean Code and SOLID principles
+- All tests passing
+
+
 
