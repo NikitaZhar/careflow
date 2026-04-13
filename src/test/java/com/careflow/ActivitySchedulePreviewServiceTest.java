@@ -24,12 +24,26 @@ class ActivitySchedulePreviewServiceTest {
         Map<Long, String> previewDates = previewService.buildRulePreviewDates(List.of(first, second));
 
         assertEquals(2, previewDates.size());
+
         assertTrue(previewDates.containsKey(1L));
         assertTrue(previewDates.containsKey(2L));
+
         assertNotNull(previewDates.get(1L));
         assertNotNull(previewDates.get(2L));
+
         assertFalse(previewDates.get(1L).isBlank());
         assertFalse(previewDates.get(2L).isBlank());
+
+        assertEquals(3, previewDates.get(1L).split(", ").length);
+        assertEquals(3, previewDates.get(2L).split(", ").length);
+    }
+
+    @Test
+    void buildRulePreviewDatesReturnsEmptyMapForEmptyRules() {
+        Map<Long, String> previewDates = previewService.buildRulePreviewDates(List.of());
+
+        assertNotNull(previewDates);
+        assertTrue(previewDates.isEmpty());
     }
 
     @Test
@@ -39,6 +53,16 @@ class ActivitySchedulePreviewServiceTest {
         assertNotNull(result);
         assertFalse(result.isBlank());
         assertEquals(3, result.split(", ").length);
+    }
+
+    @Test
+    void buildNextDatesTextReturnsSingleDateWhenCountIsOne() {
+        String result = previewService.buildNextDatesText(DayOfWeek.FRIDAY, 1);
+
+        assertNotNull(result);
+        assertFalse(result.isBlank());
+        assertEquals(1, result.split(", ").length);
+        assertFalse(result.contains(", "));
     }
 
     private ActivityScheduleRule createRuleWithId(Long id, DayOfWeek dayOfWeek) {

@@ -2,53 +2,193 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Provider Page</title>
+    <title>Provider Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h2, h3 {
+            margin-top: 30px;
+        }
+
+        .user-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .message {
+            color: green;
+            margin-top: 10px;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .section {
+            margin-top: 25px;
+        }
+
+        .form-block {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input, textarea, select {
+            width: 300px;
+            padding: 5px;
+            margin-top: 5px;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 7px 15px;
+            cursor: pointer;
+        }
+
+        table {
+            margin-top: 15px;
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+
+        hr {
+            margin: 30px 0;
+        }
+    </style>
 </head>
 <body>
 
-<div style="margin-bottom: 20px;">
+<!-- ===== Информация о текущем пользователе ===== -->
+<div class="user-info">
     <p>
         Вы вошли как:
-        <strong th:text="${currentUser.username}"></strong>
-        (<span th:text="${currentUser.role}"></span>)
+        <strong th:text="${currentUser.username}">username</strong>
+        (<span th:text="${currentUser.role}">PROVIDER</span>)
     </p>
     <p>
         Email:
-        <span th:text="${currentUser.email}"></span>
+        <span th:text="${currentUser.email}">email@example.com</span>
     </p>
     <a th:href="@{/auth/logout}">Logout</a>
 </div>
 
-<h2 id="pageTitle">Мои активности</h2>
+<h2>Панель провайдера</h2>
 
-<button id="addButton" type="button" onclick="showActivityForm()">
-    Добавить услугу
-</button>
+<!-- ===== Сообщения ===== -->
+<div th:if="${message}" class="message">
+    <p th:text="${message}"></p>
+</div>
 
-<div id="activityForm" style="display: none; margin-top: 20px;">
-    <h3>Создать услугу</h3>
+<div th:if="${error}" class="error">
+    <p th:text="${error}"></p>
+</div>
 
-    <form th:action="@{/provider/activities}" method="post" enctype="multipart/form-data">
-        <div>
+<!-- ===================================================== -->
+<!-- ===== Приглашение клиента ===== -->
+<!-- ===================================================== -->
+<div class="section">
+    <h3>Пригласить клиента</h3>
+
+    <button id="showClientInviteButton" type="button" onclick="showClientInviteForm()">
+        Пригласить клиента
+    </button>
+
+    <div id="clientInviteForm" class="form-block" style="display: none;">
+        <form th:action="@{/provider/clients/invite}" method="post">
+            <label for="clientEmail">Email клиента:</label>
+            <input id="clientEmail"
+                   type="email"
+                   name="email"
+                   placeholder="client@example.com"
+                   required>
+
+            <button type="submit">Отправить приглашение</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- ===== Список клиентов провайдера ===== -->
+<!-- ===================================================== -->
+<div class="section">
+    <h3>Мои клиенты</h3>
+
+    <div th:if="${#lists.isEmpty(clients)}">
+        <p>Список клиентов пуст</p>
+    </div>
+
+    <table th:if="${not #lists.isEmpty(clients)}">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Username</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="client, stat : ${clients}">
+                <td th:text="${stat.index + 1}">1</td>
+                <td th:text="${client.username}">client1</td>
+                <td th:text="${client.email}">client@example.com</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- ===== Создание новой услуги ===== -->
+<!-- ===================================================== -->
+<div class="section">
+    <h3>Мои активности</h3>
+
+    <button id="addButton" type="button" onclick="showActivityForm()">
+        Добавить услугу
+    </button>
+
+    <div id="activityForm" class="form-block" style="display: none;">
+        <form th:action="@{/provider/activities}"
+              method="post"
+              enctype="multipart/form-data">
+
             <label for="title">Название:</label>
             <input id="title"
                    type="text"
                    name="title"
                    placeholder="Введите название услуги"
                    required>
-        </div>
 
-        <div style="margin-top: 10px;">
             <label for="description">Описание:</label>
             <textarea id="description"
                       name="description"
                       rows="4"
-                      cols="50"
                       placeholder="Опишите услугу"
                       required></textarea>
-        </div>
 
-        <div style="margin-top: 10px;">
             <label for="price">Цена:</label>
             <input id="price"
                    type="number"
@@ -57,9 +197,7 @@
                    min="0.01"
                    placeholder="Например: 1000"
                    required>
-        </div>
 
-        <div style="margin-top: 10px;">
             <label for="durationMinutes">Длительность (мин):</label>
             <input id="durationMinutes"
                    type="number"
@@ -67,71 +205,63 @@
                    min="1"
                    placeholder="Например: 60"
                    required>
-        </div>
 
-        <div style="margin-top: 20px;">
-            <p><strong>Необязательные материалы:</strong></p>
+            <label for="document">Загрузить текстовый или PDF файл:</label>
+            <input id="document"
+                   type="file"
+                   name="document"
+                   accept=".txt,.pdf">
 
-            <div style="margin-top: 10px;">
-                <label for="document">Загрузить текстовый или PDF файл:</label>
-                <input id="document"
-                       type="file"
-                       name="document"
-                       accept=".txt,.pdf">
-            </div>
+            <label for="video">Загрузить видео файл:</label>
+            <input id="video"
+                   type="file"
+                   name="video"
+                   accept="video/*">
 
-            <div style="margin-top: 10px;">
-                <label for="video">Загрузить видео файл:</label>
-                <input id="video"
-                       type="file"
-                       name="video"
-                       accept="video/*">
-            </div>
-        </div>
-
-        <div style="margin-top: 15px;">
             <button type="submit">Создать услугу</button>
-        </div>
-    </form>
+        </form>
+    </div>
+
+    <!-- ===== Список услуг ===== -->
+    <div th:if="${#lists.isEmpty(activities)}">
+        <p>Список активностей пуст</p>
+    </div>
+
+    <table th:if="${not #lists.isEmpty(activities)}">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Услуга</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="activity, stat : ${activities}">
+                <td th:text="${stat.index + 1}">1</td>
+                <td>
+                    <a th:href="@{/provider/activities/{id}(id=${activity.id})}"
+                       style="text-decoration: none; color: inherit;">
+                        <strong th:text="${activity.title}">Title</strong>
+                        <span> — </span>
+                        <span th:text="${activity.description}">Description</span>
+                    </a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
-<div th:if="${#lists.isEmpty(activities)}" style="margin-top: 20px;">
-    <p>Список активностей пуст</p>
-</div>
-
-<table th:if="${not #lists.isEmpty(activities)}" style="margin-top: 20px;">
-    <thead>
-        <tr>
-            <th>№</th>
-            <th>Услуга</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr th:each="activity, stat : ${activities}" style="vertical-align: top;">
-            <td th:text="${stat.index + 1}"></td>
-            <td>
-    		<a th:href="@{/provider/activities/{id}(id=${activity.id})}"
-       			style="display: inline-block;
-             	max-width: 60ch;
-              	text-decoration: none;
-              	color: inherit;
-              	word-break: break-word;">
-
-        	<span>
-            	<span th:text="${activity.title}"></span>
-            	<span> </span>
-            	<span th:text="${activity.description}"></span>
-        	</span>
-		    </a>
-			</td>
-		</tr>
-    </tbody>
-</table>
-
+<!-- ===================================================== -->
+<!-- ===== JavaScript ===== -->
+<!-- ===================================================== -->
 <script>
     function showActivityForm() {
         document.getElementById('activityForm').style.display = 'block';
         document.getElementById('addButton').style.display = 'none';
+    }
+
+    function showClientInviteForm() {
+        document.getElementById('clientInviteForm').style.display = 'block';
+        document.getElementById('showClientInviteButton').style.display = 'none';
     }
 </script>
 

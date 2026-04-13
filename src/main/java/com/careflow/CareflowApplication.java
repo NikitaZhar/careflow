@@ -16,3 +16,5 @@ public class CareflowApplication {
 //	123
 
 //	http://localhost:8080/provider/register?token=
+//	http://localhost:8080/client/register?token=
+
